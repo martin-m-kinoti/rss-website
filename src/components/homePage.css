@@ -200,3 +200,30 @@
 .hr-divider {
     opacity: 50%;
 }
+
+/*latest news scroll links*/
+.latest-news-scroll-links {
+    flex: none;
+    border: grey solid 1px;
+    width: 350px;              
+    box-sizing: border-box;
+}
+
+.latest-news-scroll-header {
+    display: flex;
+    align-items: center;            
+    justify-content: space-between; 
+    color: #ffffff;
+    background: #176830;
+    padding: 10px 20px;
+}
+
+.latest-news-scroll-header h3 {
+    margin: 0;                     
+}
+
+.latest-news-scroll-header span {
+    display: flex;                  
+    align-items: center;
+    color: #000000;
+}
