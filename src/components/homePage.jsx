@@ -94,42 +94,100 @@ function HomePage() {
                     <h2>KENYA BREAKING NEWS</h2>
                 </div>
             </section>
-            <section className="breaking-news">
-                <div className="news-image">
-                    <img className="article-image" src="/talanta-image.jpeg" alt="breaking-news-image" />
+            <section className="breaking-news-section">
+                <div className="breaking-news">
+                    <div className="news-image">
+                        <img className="article-image" src="/talanta-image.jpeg" alt="breaking-news-image" />
+                    </div>
+                    <div className="news-content">
+                        <div className="tag">
+                            <p className="breaking-tag">BREAKING</p>
+                        </div>
+                        <div className="title">
+                            <h3 className="breaking-title">
+                                The Awaited Game: Bayern Munich, Ajax to Play at Talant Stadium Opening, 
+                                Ruto Announces
+                            </h3>
+                        </div>
+                        <div className="description">
+                            <p className="description-text">
+                                On the day his cabinet was staring at dissolution, President Ruto announced 
+                                the date of Talant Stadium opening with a match being played by European ...
+                            </p>
+                            <div className="view-article-button">
+                                <svg 
+                                    xmlns="http://www.w3.org/2000/svg" 
+                                    width="24" 
+                                    height="24" 
+                                    viewBox="0 0 24 24" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    stroke-width="2" 
+                                    stroke-linecap="round" 
+                                    stroke-linejoin="round" 
+                                    class="lucide lucide-arrow-right preview-icon">
+                                        <path d="M5 12h14"/>
+                                        <path d="m12 5 7 7-7 7"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div className="news-content">
-                    <div className="tag">
-                        <p className="breaking-tag">BREAKING</p>
+                <div className="news-scroll-links">
+                    <div className="news-scroll-header">
+                        <h3>NEWS</h3>
                     </div>
-                    <div className="title">
-                        <h3 className="breaking-title">
-                            The Awaited Game: Bayern Munich, Ajax to Play at Talant Stadium Opening, 
-                            Ruto Announces
-                        </h3>
+                    <div className="news-scroll-articles">
+                        <div className="top-story">
+                            <div className="top-story-image">
+                                <img src="/iebc-image.jpeg" alt="iebc-image-story" />
+                            </div>
+                            <div className="top-story-tag">
+                                <h4>TOP STORY</h4>
+                            </div>
+                            <div className="article-text">
+                                <p>
+                                    Election Bill 2026 risks transparency in the 2027 general 
+                                    elections.
+                                </p>
+                            </div>
+                            <div className="article-footer-text">
+                                <p>News</p>
+                                <p>9 hours ago</p>
+                            </div>
+                            <div className="hr-divider">
+                                <hr />
+                            </div>
+                        </div>
+                        <div className="other-stories">
+                            <div className="article-text">
+                                <p>
+                                    Gachagua: We cannot allow Ruto to harass our candidate
+                                </p>
+                            </div>
+                            <div className="article-footer-text">
+                                <p>News</p>
+                                <p>11 hours ago</p>
+                            </div>
+                            <div className="hr-divider">
+                                <hr />
+                            </div>
+                        </div>
+                        <div className="other-stories">
+                            <div className="article-text">
+                                <p>
+                                    Former EACC CEO Halakhe Waqo among 9 shortlisted for IEBC CEO job
+                                </p>
+                            </div>
+                            <div className="article-footer-text">
+                                <p>News</p>
+                                <p>15 hours ago</p>
+                            </div>
+                            <div className="hr-divider">
+                                <hr />
+                            </div>
+                        </div>
                     </div>
-                    <div className="description">
-                        <p className="description-text">
-                            On the day his cabinet was staring at dissolution, President Ruto announced 
-                            the date of Talant Stadium opening with a match being played by European ...
-                        </p>
-                    </div>
-                </div>
-                <div className="view-article-button">
-                    <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        width="24" 
-                        height="24" 
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        stroke-width="2" 
-                        stroke-linecap="round" 
-                        stroke-linejoin="round" 
-                        class="lucide lucide-arrow-right preview-icon">
-                            <path d="M5 12h14"/>
-                            <path d="m12 5 7 7-7 7"/>
-                    </svg>
                 </div>
             </section>
         </main>
