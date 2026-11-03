@@ -24,6 +24,15 @@ let articlesState = "loading"; // loading | ready | error
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80";
 
+// Broken or non-image URLs fall back to the default newsroom image instead of
+// showing a broken-image icon.
+function attachImageFallback(img) {
+  img.onerror = () => {
+    img.onerror = null;
+    img.src = FALLBACK_IMAGE;
+  };
+}
+
 function normalizeArticle(row) {
   const plainText = (row.content || "").replace(/<[^>]*>/g, " ");
   const words = plainText.trim().split(/\s+/).filter(Boolean).length;
@@ -54,6 +63,23 @@ async function loadArticles() {
   }
   renderApp();
   renderMostRead();
+  renderTicker();
+}
+
+function renderTicker() {
+  const ticker = document.getElementById("ticker");
+  const text = document.getElementById("ticker-text");
+  if (!ticker || !text) return;
+
+  if (articlesState === "ready" && ARTICLES.length > 0) {
+    ticker.classList.remove("hidden");
+    text.textContent = ARTICLES.slice(0, 2).map(art => art.title).join(" • ");
+  } else if (articlesState === "error") {
+    ticker.classList.remove("hidden");
+    text.textContent = "Headlines unavailable right now";
+  } else if (articlesState === "ready") {
+    ticker.classList.add("hidden");
+  }
 }
 
 let currentCategory = "Home";
@@ -178,7 +204,7 @@ function renderApp() {
       const isSaved = savedArticleIds.includes(art.id);
       return `
         <article class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition flex flex-col sm:flex-row gap-4 group">
-          <img src="${art.image}" alt="${art.title}" class="w-full sm:w-48 h-36 object-cover rounded-lg shrink-0 group-hover:brightness-95 transition">
+          <img src="${art.image}" alt="${art.title}" onerror="this.onerror=null; this.src='${FALLBACK_IMAGE}'" class="w-full sm:w-48 h-36 object-cover rounded-lg shrink-0 group-hover:brightness-95 transition">
           <div class="flex-1 flex flex-col justify-between">
             <div>
               <div class="flex justify-between items-center mb-1.5">
@@ -215,7 +241,9 @@ function renderHeroGrid() {
   const subs = ARTICLES.filter(a => a.id !== lead.id).slice(0, 3);
 
   // Render Lead
-  document.getElementById('hero-lead-img').src = lead.image;
+  const heroImg = document.getElementById('hero-lead-img');
+  attachImageFallback(heroImg);
+  heroImg.src = lead.image;
   document.getElementById('hero-lead-cat').textContent = lead.category;
   document.getElementById('hero-lead-title').textContent = lead.title;
   document.getElementById('hero-lead-desc').textContent = lead.summary;
@@ -227,7 +255,7 @@ function renderHeroGrid() {
   const subGrid = document.getElementById('hero-sub-grid');
   subGrid.innerHTML = subs.map(art => `
     <article onclick="openArticleModal(${art.id})" class="flex bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition cursor-pointer group h-[120px]">
-      <img src="${art.image}" class="w-28 sm:w-32 h-full object-cover group-hover:scale-105 transition duration-300" alt="Thumbnail">
+      <img src="${art.image}" onerror="this.onerror=null; this.src='${FALLBACK_IMAGE}'" class="w-28 sm:w-32 h-full object-cover group-hover:scale-105 transition duration-300" alt="Thumbnail">
       <div class="p-3 flex flex-col justify-between flex-1">
         <div>
           <span class="text-[10px] font-extrabold text-red-600 uppercase tracking-wider">${art.category}</span>
@@ -305,7 +333,9 @@ function openArticleModal(articleId) {
   document.getElementById('modal-author').textContent = `By ${article.author}`;
   document.getElementById('modal-date').textContent = article.date;
   document.getElementById('modal-readtime').textContent = article.readTime;
-  document.getElementById('modal-image').src = article.image;
+  const modalImg = document.getElementById('modal-image');
+  attachImageFallback(modalImg);
+  modalImg.src = article.image;
   document.getElementById('modal-content').innerHTML = article.content || `<p>${article.summary}</p>`;
 
   updateModalSaveButtonState();
