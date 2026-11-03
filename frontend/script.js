@@ -19,115 +19,42 @@ tailwind.config = {
 // --- DATABASE / STATE ---
 const CATEGORIES = ["Home", "News", "Politics", "World", "Business", "Entertainment", "Sports", "Lifestyle", "Opinion"];
 
-const ARTICLES = [
-  {
-    id: 1,
-    title: "EAC Trade Summit Opens in Nairobi with Focus on Digital Customs & Duty Frameworks",
-    category: "Business",
-    author: "David Maina",
-    date: "Nov 3, 2026",
-    readTime: "4 min read",
-    image: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=800&q=80",
-    lead: true,
-    summary: "East African Community trade ministers convene in Nairobi to ratify streamlined electronic border clearance protocols aiming to boost cross-border commerce by 35%.",
-    content: `
-      <p class="font-semibold text-slate-900">NAIROBI — Delegates from seven East African Community member states have gathered in Nairobi for the annual EAC Commerce and Integration Summit.</p>
-      <p>The primary agenda focuses on deploying harmonized single-window digital customs infrastructure to eliminate cargo delays at key border points like Busia, Namanga, and Malaba.</p>
-      <p>Speaking during the opening keynote, Kenya's Cabinet Secretary for Trade noted that reducing transit times across the Northern Corridor remains vital for lowering food prices and industrial raw material costs across the region.</p>
-      <p>"Digital integration is no longer optional; it is the fundamental engine driving trade efficiency across our borders," the CS stated.</p>
-    `
-  },
-  {
-    id: 2,
-    title: "Senate Advances New Agriculture Modernization Bill to Boost County Produce Yields",
-    category: "Politics",
-    author: "Grace Wanjiku",
-    date: "Nov 3, 2026",
-    readTime: "3 min read",
-    image: "https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&w=600&q=80",
-    featured: true,
-    summary: "Lawmakers unanimously pass crucial amendments offering subsidized smart-irrigation equipment and soil testing kits for smallholder farmers.",
-    content: `
-      <p>The Kenyan Senate has passed the Agriculture Modernization Framework Bill, directing increased county-level budget allocations toward modern irrigation infrastructure and subsidized organic fertilizer distribution.</p>
-      <p>Sponsors of the legislation highlighted that shifting reliance away from rain-fed agriculture is imperative for food security amid changing climate patterns across East Africa.</p>
-    `
-  },
-  {
-    id: 3,
-    title: "Harambee Stars Qualify for Regional Cup Finals After Thrilling 2-1 Victory",
-    category: "Sports",
-    author: "Kevin Otieno",
-    date: "Nov 2, 2026",
-    readTime: "5 min read",
-    image: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=600&q=80",
-    featured: true,
-    summary: "A stoppage-time goal sealed Kenya's dramatic win at Nyayo National Stadium before a sold-out crowd of over 30,000 football fans.",
-    content: `
-      <p>In a memorable evening for Kenyan sports, the national football team secured their place in the upcoming continental championship finals with a hard-fought 2-1 win.</p>
-      <p>The decisive header came in the 92nd minute following a pinpoint cross from the right flank, igniting joyous celebrations across the stadium.</p>
-    `
-  },
-  {
-    id: 4,
-    title: "Silicon Savannah: Nairobi Tech Startups Raise $180M in Green Energy Tech",
-    category: "Tech",
-    author: "Amina Hassan",
-    date: "Nov 2, 2026",
-    readTime: "4 min read",
-    image: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=600&q=80",
-    featured: false,
-    summary: "Venture capital funding into Kenyan clean-tech startups surges as EV battery swapping networks and solar micro-grids expand into regional towns.",
-    content: `
-      <p>Nairobi continues to solidify its reputation as Africa's premier technology innovation hub, with renewable energy and e-mobility startups securing record venture funding in Q3 2026.</p>
-      <p>Investors cite strong policy frameworks and rapid consumer adoption of electric two-wheelers and solar-powered cold storage units in rural agricultural hubs.</p>
-    `
-  },
-  {
-    id: 5,
-    title: "Shilling Holds Firm as Central Bank Forex Reserves Reach 6-Month High",
-    category: "Business",
-    author: "David Maina",
-    date: "Nov 2, 2026",
-    readTime: "3 min read",
-    image: "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80",
-    featured: false,
-    summary: "Increased diaspora remittances and robust tea and horticulture export revenues provide stable support for the local currency against major global currencies.",
-    content: `
-      <p>The Central Bank of Kenya reported an encouraging bump in foreign exchange reserves, now covering 4.8 months of import needs.</p>
-      <p>Financial analysts attribute this resilience to increased tourism earnings and steady agricultural exports to European and Middle Eastern markets.</p>
-    `
-  },
-  {
-    id: 6,
-    title: "Annual Kenya Cultural Festival Celebrates Diverse Heritage in Nakuru",
-    category: "Entertainment",
-    author: "Brenda Kiprop",
-    date: "Nov 1, 2026",
-    readTime: "3 min read",
-    image: "https://images.unsplash.com/photo-1469488865564-c2de10f69f96?auto=format&fit=crop&w=600&q=80",
-    featured: false,
-    summary: "Thousands gather in Nakuru County to experience traditional music, gastronomy, digital art showcases, and contemporary fashion exhibitions.",
-    content: `
-      <p>Cultural troupes and contemporary artists from across all 47 counties converged in Nakuru for the vibrant opening of the national cultural expo.</p>
-      <p>The event highlights both preserved traditional arts and innovative digital storytelling projects by young creative entrepreneurs.</p>
-    `
-  },
-  {
-    id: 7,
-    title: "Opinion: Why Devolved Healthcare Infrastructure Needs Sustained County Funding",
-    category: "Opinion",
-    author: "Dr. John Omondi",
-    date: "Nov 1, 2026",
-    readTime: "6 min read",
-    image: "https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=600&q=80",
-    featured: false,
-    summary: "A medical specialist breaks down the long-term economic and social benefits of upgrading Level 4 hospitals with specialized diagnostic equipment.",
-    content: `
-      <p>Devolution in Kenya brought healthcare closer to the people, but maintaining medical supplies and modern diagnostic equipment requires predictable fiscal disbursements.</p>
-      <p>Investing in decentralized healthcare prevents catastrophic household expenditure and builds a healthier, more productive workforce for Kenya's economic future.</p>
-    `
+let ARTICLES = [];
+let articlesState = "loading"; // loading | ready | error
+
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=800&q=80";
+
+function normalizeArticle(row) {
+  const plainText = (row.content || "").replace(/<[^>]*>/g, " ");
+  const words = plainText.trim().split(/\s+/).filter(Boolean).length;
+  const minutes = Math.max(1, Math.round(words / 200));
+  const date = row.created_at ? new Date(row.created_at) : null;
+  return {
+    ...row,
+    image: row.image_url || FALLBACK_IMAGE,
+    readTime: `${minutes} min read`,
+    date: date
+      ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : ""
+  };
+}
+
+async function loadArticles() {
+  articlesState = "loading";
+  renderApp();
+  try {
+    const res = await fetch("/api/articles");
+    if (!res.ok) throw new Error(`API responded with status ${res.status}`);
+    const rows = await res.json();
+    ARTICLES = Array.isArray(rows) ? rows.map(normalizeArticle) : [];
+    articlesState = "ready";
+  } catch (err) {
+    console.error("Failed to load articles:", err);
+    articlesState = "error";
   }
-];
+  renderApp();
+  renderMostRead();
+}
 
 let currentCategory = "Home";
 let searchQuery = "";
@@ -135,7 +62,7 @@ let savedArticleIds = JSON.parse(localStorage.getItem("insight_saved_articles") 
 let activeModalArticleId = null;
 
 // --- INITIALIZATION ---
-window.onload = function() {
+window.onload = async function() {
   // Set Current Date
   const now = new Date();
   const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
@@ -144,8 +71,10 @@ window.onload = function() {
   // Render App Components
   renderCategoryNav();
   renderApp();
-  renderMostRead();
   updateSavedCount();
+
+  // Fetch articles from the backend, then render
+  await loadArticles();
 };
 
 // --- RENDER LOGIC ---
@@ -165,10 +94,53 @@ function renderCategoryNav() {
 }
 
 function renderApp() {
+  const filterBanner = document.getElementById('filter-banner');
+  const heroSection = document.getElementById('hero-section');
+  const feedTitle = document.getElementById('feed-title');
+  const feedContainer = document.getElementById('articles-feed');
+  const noResults = document.getElementById('no-results');
+
+  // Loading state
+  if (articlesState === "loading") {
+    filterBanner.classList.add('hidden');
+    heroSection.classList.add('hidden');
+    feedTitle.textContent = "Latest Kenyan News";
+    document.getElementById('feed-count').textContent = "";
+    noResults.classList.add('hidden');
+    feedContainer.innerHTML = `
+      <div class="bg-white p-10 rounded-xl shadow-sm border border-gray-200 text-center">
+        <i class="fas fa-circle-notch fa-spin text-4xl text-red-600 mb-3"></i>
+        <h3 class="text-base font-bold text-gray-700">Loading today's headlines...</h3>
+        <p class="text-xs text-gray-500 mt-1">Fetching the latest stories from the newsroom.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Error state
+  if (articlesState === "error") {
+    filterBanner.classList.add('hidden');
+    heroSection.classList.add('hidden');
+    feedTitle.textContent = "Latest Kenyan News";
+    document.getElementById('feed-count').textContent = "";
+    noResults.classList.add('hidden');
+    feedContainer.innerHTML = `
+      <div class="bg-white p-10 rounded-xl shadow-sm border border-gray-200 text-center">
+        <i class="fas fa-triangle-exclamation text-4xl text-red-600 mb-3"></i>
+        <h3 class="text-base font-bold text-gray-700">Could not load articles</h3>
+        <p class="text-xs text-gray-500 mt-1">The news server is unreachable right now. Please try again.</p>
+        <button onclick="loadArticles()" class="mt-4 bg-red-600 text-white text-xs px-4 py-2 rounded-lg hover:bg-red-700 transition">
+          Retry
+        </button>
+      </div>
+    `;
+    return;
+  }
+
   // Filter Articles
   let filtered = ARTICLES.filter(art => {
     const matchesCategory = currentCategory === "Home" || art.category === currentCategory;
-    const matchesSearch = searchQuery === "" || 
+    const matchesSearch = searchQuery === "" ||
       art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       art.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
       art.category.toLowerCase().includes(searchQuery.toLowerCase());
@@ -176,27 +148,25 @@ function renderApp() {
   });
 
   // Update Filter Banner State
-  const filterBanner = document.getElementById('filter-banner');
-  const heroSection = document.getElementById('hero-section');
-  const feedTitle = document.getElementById('feed-title');
-
   if (currentCategory !== "Home" || searchQuery !== "") {
     filterBanner.classList.remove('hidden');
-    document.getElementById('filter-label').textContent = searchQuery 
+    document.getElementById('filter-label').textContent = searchQuery
       ? `"${searchQuery}" in ${currentCategory}`
       : currentCategory;
     heroSection.classList.add('hidden'); // Hide hero grid when searching/filtering specific categories
     feedTitle.textContent = `${currentCategory} Headlines`;
   } else {
     filterBanner.classList.add('hidden');
-    heroSection.classList.remove('hidden');
-    feedTitle.textContent = "Latest Kenyan News";
-    renderHeroGrid();
+    if (ARTICLES.length > 0) {
+      heroSection.classList.remove('hidden');
+      feedTitle.textContent = "Latest Kenyan News";
+      renderHeroGrid();
+    } else {
+      heroSection.classList.add('hidden');
+    }
   }
 
   // Render Articles List Feed
-  const feedContainer = document.getElementById('articles-feed');
-  const noResults = document.getElementById('no-results');
   document.getElementById('feed-count').textContent = `Showing ${filtered.length} article(s)`;
 
   if (filtered.length === 0) {
