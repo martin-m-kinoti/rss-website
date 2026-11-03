@@ -17,7 +17,7 @@ tailwind.config = {
 }
 
 // --- DATABASE / STATE ---
-const CATEGORIES = ["All", "Politics", "Business", "Sports", "Tech", "Entertainment", "Opinion"];
+const CATEGORIES = ["Home", "News", "Politics", "World", "Business", "Entertainment", "Sports", "Lifestyle", "Opinion"];
 
 const ARTICLES = [
   {
@@ -129,7 +129,7 @@ const ARTICLES = [
   }
 ];
 
-let currentCategory = "All";
+let currentCategory = "Home";
 let searchQuery = "";
 let savedArticleIds = JSON.parse(localStorage.getItem("insight_saved_articles") || "[]");
 let activeModalArticleId = null;
@@ -167,7 +167,7 @@ function renderCategoryNav() {
 function renderApp() {
   // Filter Articles
   let filtered = ARTICLES.filter(art => {
-    const matchesCategory = currentCategory === "All" || art.category === currentCategory;
+    const matchesCategory = currentCategory === "Home" || art.category === currentCategory;
     const matchesSearch = searchQuery === "" || 
       art.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       art.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -180,7 +180,7 @@ function renderApp() {
   const heroSection = document.getElementById('hero-section');
   const feedTitle = document.getElementById('feed-title');
 
-  if (currentCategory !== "All" || searchQuery !== "") {
+  if (currentCategory !== "Home" || searchQuery !== "") {
     filterBanner.classList.remove('hidden');
     document.getElementById('filter-label').textContent = searchQuery 
       ? `"${searchQuery}" in ${currentCategory}`
@@ -319,7 +319,7 @@ function clearSearch() {
 }
 
 function resetFilters() {
-  currentCategory = 'All';
+  currentCategory = 'Home';
   clearSearch();
   renderCategoryNav();
 }
