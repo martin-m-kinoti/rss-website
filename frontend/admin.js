@@ -1,49 +1,69 @@
 // --- InsightNews Admin Console ---
 
 const ADMIN_CATEGORIES = ["News", "Politics", "World", "Business", "Entertainment", "Sports", "Lifestyle", "Opinion", "Tech"];
-const TOKEN_KEY = "insight_admin_token";
 
-let adminToken = sessionStorage.getItem(TOKEN_KEY) || "";
+let currentAdmin = null;
 let articlesCache = [];
 let editingArticleId = null;
 
 // --- INITIALIZATION ---
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const select = document.getElementById("f-category");
   select.innerHTML = ADMIN_CATEGORIES.map(
     cat => `<option value="${cat}">${cat}</option>`
   ).join("");
 
-  document.getElementById("f-image").addEventListener("input", (e) => {
-    const preview = document.getElementById("f-image-preview");
-    if (e.target.value) {
-      preview.src = e.target.value;
-      preview.classList.remove("hidden");
-    } else {
-      preview.classList.add("hidden");
-    }
-  });
+  document.getElementById("f-image").addEventListener("input", updateImagePreview);
 
-  if (adminToken) {
-    verifyToken(adminToken).then(ok => {
-      if (ok) enterDashboard();
-      else showLogin("Session expired. Please sign in again.");
-    });
+  // Restore an existing session (cookie-based), if any
+  const admin = await fetchMe();
+  if (admin) {
+    enterDashboard(admin);
   } else {
     showLogin();
   }
 });
 
+let imagePreviewTimer = null;
+
+function updateImagePreview() {
+  const input = document.getElementById("f-image");
+  const preview = document.getElementById("f-image-preview");
+  const error = document.getElementById("f-image-error");
+  const url = input.value.trim();
+
+  clearTimeout(imagePreviewTimer);
+  preview.onload = null;
+  preview.onerror = null;
+  preview.classList.add("hidden");
+  error.classList.add("hidden");
+
+  if (!url) return;
+
+  imagePreviewTimer = setTimeout(() => {
+    preview.onload = () => {
+      preview.classList.remove("hidden");
+      error.classList.add("hidden");
+    };
+    preview.onerror = () => {
+      preview.classList.add("hidden");
+      error.textContent =
+        "This link doesn't point to an image file, so it can't be displayed. Copy the image's direct address (usually ends in .jpg, .png or .webp) instead of the page link.";
+      error.classList.remove("hidden");
+    };
+    preview.src = url;
+  }, 400);
+}
+
 // --- AUTH ---
-async function verifyToken(token) {
+async function fetchMe() {
   try {
-    const res = await fetch("/api/admin/verify", {
-      method: "POST",
-      headers: { "x-admin-token": token }
-    });
-    return res.ok;
+    const res = await fetch("/api/auth/me");
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.admin;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -51,18 +71,30 @@ async function login(event) {
   event.preventDefault();
   const errorEl = document.getElementById("login-error");
   const btn = document.getElementById("login-btn");
-  const token = document.getElementById("token-input").value.trim();
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
 
   errorEl.classList.add("hidden");
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Checking...';
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Signing in...';
 
-  if (await verifyToken(token)) {
-    adminToken = token;
-    sessionStorage.setItem(TOKEN_KEY, token);
-    enterDashboard();
-  } else {
-    errorEl.textContent = "Invalid admin token. Check the ADMIN_TOKEN in your backend .env";
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      document.getElementById("login-password").value = "";
+      enterDashboard(data.admin);
+    } else {
+      errorEl.textContent = data.error || "Sign in failed. Please try again.";
+      errorEl.classList.remove("hidden");
+    }
+  } catch {
+    errorEl.textContent = "Cannot reach the server. Is the backend running?";
     errorEl.classList.remove("hidden");
   }
 
@@ -70,15 +102,28 @@ async function login(event) {
   btn.innerHTML = "Sign In";
 }
 
-function logout() {
-  adminToken = "";
-  sessionStorage.removeItem(TOKEN_KEY);
+async function logout() {
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Server unreachable; the cookie will expire on its own
+  }
+  currentAdmin = null;
   showLogin();
+}
+
+function togglePasswordVisibility() {
+  const input = document.getElementById("login-password");
+  const eye = document.getElementById("password-eye");
+  const show = input.type === "password";
+  input.type = show ? "text" : "password";
+  eye.className = show ? "far fa-eye-slash" : "far fa-eye";
 }
 
 function showLogin(message) {
   document.getElementById("dashboard-view").classList.add("hidden");
   document.getElementById("logout-btn").classList.add("hidden");
+  document.getElementById("admin-identity").classList.add("hidden");
   document.getElementById("login-view").classList.remove("hidden");
   if (message) {
     const errorEl = document.getElementById("login-error");
@@ -87,7 +132,11 @@ function showLogin(message) {
   }
 }
 
-function enterDashboard() {
+function enterDashboard(admin) {
+  currentAdmin = admin;
+  document.getElementById("admin-identity-name").textContent = admin.name || admin.email;
+  document.getElementById("admin-identity").classList.remove("hidden");
+  document.getElementById("admin-identity").classList.add("flex");
   document.getElementById("login-view").classList.add("hidden");
   document.getElementById("dashboard-view").classList.remove("hidden");
   document.getElementById("logout-btn").classList.remove("hidden");
@@ -98,12 +147,15 @@ function enterDashboard() {
 async function api(path, { method = "GET", body } = {}) {
   const res = await fetch(path, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-token": adminToken
-    },
+    headers: { "Content-Type": "application/json" },
     body: body !== undefined ? JSON.stringify(body) : undefined
   });
+
+  if (res.status === 401) {
+    showLogin("Your session expired. Please sign in again.");
+    throw new Error("Session expired");
+  }
+
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || `Request failed (${res.status})`);
@@ -185,7 +237,6 @@ function renderArticlesList() {
 // --- CREATE / EDIT / DELETE ---
 async function submitArticle(event) {
   event.preventDefault();
-  const msgEl = document.getElementById("form-msg");
   const btn = document.getElementById("submit-btn");
 
   const payload = {
@@ -264,6 +315,7 @@ function resetForm() {
   editingArticleId = null;
   document.getElementById("article-form").reset();
   document.getElementById("f-image-preview").classList.add("hidden");
+  document.getElementById("f-image-error").classList.add("hidden");
   document.getElementById("form-title").querySelector("span").textContent =
     "Create New Article";
   document.getElementById("cancel-edit-btn").classList.add("hidden");

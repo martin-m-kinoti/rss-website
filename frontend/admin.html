@@ -46,6 +46,10 @@
       </a>
       <div class="flex items-center space-x-3 text-xs">
         <a href="/" class="text-slate-300 hover:text-white transition"><i class="fas fa-arrow-left mr-1"></i> View Site</a>
+        <span id="admin-identity" class="hidden items-center space-x-1 text-slate-300">
+          <i class="fas fa-user-shield text-emerald-400"></i>
+          <span id="admin-identity-name"></span>
+        </span>
         <button id="logout-btn" onclick="logout()" class="hidden bg-slate-800 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition">
           <i class="fas fa-sign-out-alt mr-1"></i> Log out
         </button>
@@ -55,23 +59,37 @@
 
   <!-- LOGIN GATE -->
   <main id="login-view" class="flex-1 flex items-center justify-center px-4 py-16">
-    <div class="bg-white w-full max-w-sm rounded-2xl shadow-lg border border-gray-200 p-8">
-      <div class="text-center mb-6">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-lg border border-gray-200 p-8 sm:p-10">
+      <div class="text-center mb-8">
         <div class="inline-flex bg-red-50 text-red-600 w-14 h-14 rounded-full items-center justify-center text-2xl mb-3">
           <i class="fas fa-lock"></i>
         </div>
-        <h1 class="text-xl font-extrabold text-slate-900">Newsroom Access</h1>
-        <p class="text-xs text-gray-500 mt-1">Enter the admin token to manage articles.</p>
+        <h1 class="text-xl font-extrabold text-slate-900">Newsroom Sign In</h1>
+        <p class="text-xs text-gray-500 mt-1">Use your admin account to manage articles.</p>
       </div>
-      <form onsubmit="login(event)" class="space-y-3">
-        <input type="password" id="token-input" required placeholder="Admin token"
-          class="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+      <form onsubmit="login(event)" class="space-y-5">
+        <div>
+          <label for="login-email" class="block text-sm font-bold text-slate-900 mb-1.5">Email address</label>
+          <input type="email" id="login-email" required autocomplete="username" placeholder="yours@gmail.com"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-bold text-slate-900 mb-1.5">Enter your password</label>
+          <div class="relative">
+            <input type="password" id="login-password" required minlength="8" autocomplete="current-password" placeholder="Min 8 characters"
+              class="w-full px-3.5 py-2.5 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+            <button type="button" onclick="togglePasswordVisibility()" tabindex="-1" title="Show password"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+              <i id="password-eye" class="far fa-eye"></i>
+            </button>
+          </div>
+        </div>
         <button type="submit" id="login-btn"
-          class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-2.5 rounded-lg transition uppercase tracking-wider">
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2.5 rounded-lg transition">
           Sign In
         </button>
       </form>
-      <p id="login-error" class="hidden mt-3 text-xs text-red-600 text-center font-semibold"></p>
+      <p id="login-error" class="hidden mt-4 text-xs text-red-600 text-center font-semibold"></p>
     </div>
   </main>
 
@@ -117,7 +135,12 @@
               <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Image URL</label>
               <input type="url" id="f-image" placeholder="https://... (leave blank for default image)"
                 class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600">
+              <p class="text-[11px] text-gray-400 mt-1">
+                Direct image link only (e.g. <span class="font-mono">https://images.unsplash.com/.../photo.jpg</span>).
+                Google Images result pages won't display.
+              </p>
               <img id="f-image-preview" src="" alt="" class="hidden mt-2 w-full h-32 object-cover rounded-lg border border-gray-200">
+              <p id="f-image-error" class="hidden mt-2 text-[11px] font-semibold text-red-600"></p>
             </div>
 
             <div>
