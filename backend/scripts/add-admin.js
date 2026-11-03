@@ -1,5 +1,5 @@
 // Usage (from the backend directory):
-//   npm run add-admin -- editor@insightnews.co.ke 'YourStrongPass123' "Editor Name"
+//   npm run add-admin -- editor@marialounews.co.ke 'YourStrongPass123' "Editor Name"
 //
 // Creates the admin if the email is new, or updates the password/name if it exists.
 
@@ -17,7 +17,7 @@ const name = nameParts.join(" ").trim() || "Editor";
 function fail(message) {
   console.error(`\nError: ${message}\n`);
   console.error("Usage: npm run add-admin -- <email> <password> [name]");
-  console.error('Example: npm run add-admin -- editor@insightnews.co.ke "StrongPass123" "Jane Doe"\n');
+  console.error('Example: npm run add-admin -- editor@marialounews.co.ke "StrongPass123" "Jane Doe"\n');
   process.exit(1);
 }
 

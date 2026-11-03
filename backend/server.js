@@ -278,5 +278,5 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`InsightNews server running on http://localhost:${PORT}`);
+  console.log(`Marial-LouNews server running on http://localhost:${PORT}`);
 });

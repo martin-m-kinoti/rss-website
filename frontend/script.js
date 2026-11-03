@@ -84,7 +84,7 @@ function renderTicker() {
 
 let currentCategory = "Home";
 let searchQuery = "";
-let savedArticleIds = JSON.parse(localStorage.getItem("insight_saved_articles") || "[]");
+let savedArticleIds = JSON.parse(localStorage.getItem("mln_saved_articles") || "[]");
 let activeModalArticleId = null;
 
 // --- INITIALIZATION ---
@@ -357,7 +357,7 @@ function toggleSaveCurrentModalArticle() {
   } else {
     savedArticleIds.push(activeModalArticleId);
   }
-  localStorage.setItem("insight_saved_articles", JSON.stringify(savedArticleIds));
+  localStorage.setItem("mln_saved_articles", JSON.stringify(savedArticleIds));
   updateSavedCount();
   updateModalSaveButtonState();
   renderApp();
@@ -377,7 +377,7 @@ function toggleSaveArticle(event, articleId) {
   } else {
     savedArticleIds.push(articleId);
   }
-  localStorage.setItem("insight_saved_articles", JSON.stringify(savedArticleIds));
+  localStorage.setItem("mln_saved_articles", JSON.stringify(savedArticleIds));
   updateSavedCount();
   renderApp();
 }

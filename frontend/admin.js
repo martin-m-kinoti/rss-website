@@ -1,6 +1,6 @@
-// --- InsightNews Admin Console ---
+// --- Marial-LouNews Admin Console ---
 
-const ADMIN_CATEGORIES = ["News", "Politics", "World", "Business", "Entertainment", "Sports", "Lifestyle", "Opinion", "Tech"];
+const ADMIN_CATEGORIES = ["News", "Politics", "World", "Business", "Entertainment", "Sports", "Lifestyle", "Opinion"];
 
 let currentAdmin = null;
 let articlesCache = [];
@@ -213,7 +213,7 @@ function renderArticlesList() {
         </div>
         <h3 class="text-sm font-bold text-slate-900 leading-snug line-clamp-2">${escapeHtml(art.title)}</h3>
         <p class="text-[11px] text-gray-500 mt-1">
-          <i class="far fa-user mr-1"></i>${escapeHtml(art.author || "Insight Desk")}
+          <i class="far fa-user mr-1"></i>${escapeHtml(art.author || "MLN Desk")}
           <span class="mx-1">&bull;</span>
           <i class="far fa-clock mr-1"></i>${formatDate(art.created_at)}
           <span class="mx-1">&bull;</span>
@@ -242,7 +242,7 @@ async function submitArticle(event) {
   const payload = {
     title: document.getElementById("f-title").value.trim(),
     category: document.getElementById("f-category").value,
-    author: document.getElementById("f-author").value.trim() || "Insight Desk",
+    author: document.getElementById("f-author").value.trim() || "MLN Desk",
     summary: document.getElementById("f-summary").value.trim(),
     image_url: document.getElementById("f-image").value.trim() || null,
     content: document.getElementById("f-content").value,
