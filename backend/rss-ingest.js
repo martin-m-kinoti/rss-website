@@ -35,8 +35,6 @@ const parser = new Parser({
   }
 });
 
-// ---------- helpers ----------
-
 function stripHtml(html = "") {
   return html
     .replace(/<[^>]*>/g, " ")
@@ -107,8 +105,6 @@ function presentArticle(row) {
     category: normalizeCategory(source?.category)
   };
 }
-
-// ---------- ingestion ----------
 
 async function readFeed(source) {
   const feed = await parser.parseURL(source.feed_url);
@@ -215,7 +211,7 @@ export function startCleanupJob(days = RETENTION_DAYS) {
   cron.schedule("0 3 * * *", purge);
 }
 
-// ---------- validation ----------
+// Validation
 
 function validateSourcePayload(body, { partial = false }) {
   const errors = [];
@@ -253,7 +249,7 @@ function validateSourcePayload(body, { partial = false }) {
   return { errors, data };
 }
 
-// ---------- public routes (mounted at /api/rss) ----------
+// public routes (mounted at /api/rss) 
 
 export const rssRouter = Router();
 
@@ -312,7 +308,7 @@ rssRouter.get("/sources", async (req, res) => {
   );
 });
 
-// ---------- admin routes (mounted behind requireAdmin) ----------
+// admin routes (mounted behind requireAdmin) 
 
 export const rssAdminRouter = Router();
 
