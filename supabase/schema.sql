@@ -57,3 +57,56 @@ alter table public.admins enable row level security;
 --     'Editor Name'
 --   );
 
+
+
+-- RSS schema section
+create table if not exists rss_sources (
+  id              bigint generated always as identity primary key,
+  name            text not null,                -- e.g. "BBC News"
+  feed_url        text not null unique,         -- the RSS/Atom URL
+  site_url        text,                         -- the outlet's homepage
+  category        text,                         -- e.g. "world", "business"
+  active          boolean not null default true,
+  last_fetched_at timestamptz,
+  last_error      text,
+  created_at      timestamptz not null default now()
+);
+
+create table if not exists rss_articles (
+  id            bigint generated always as identity primary key,
+  source_id     bigint not null references rss_sources(id) on delete cascade,
+  guid          text not null,                  -- feed GUID, or the link if missing
+  title         text not null,
+  summary       text,                           -- short excerpt only
+  url           text not null,                  -- link to the ORIGINAL article
+  image_url     text,
+  author        text,
+  published_at  timestamptz not null default now(),
+  created_at    timestamptz not null default now(),
+  unique (source_id, guid)                      -- prevents duplicates
+);
+
+create index if not exists rss_articles_published_idx on rss_articles (published_at desc);
+create index if not exists rss_articles_source_idx on rss_articles (source_id);
+
+-- Row Level Security: public can read articles, only the server (service role) can write
+alter table rss_sources  enable row level security;
+alter table rss_articles enable row level security;
+
+create policy "Public can read rss articles"
+  on rss_articles for select using (true);
+
+create policy "Public can read rss sources"
+  on rss_sources for select using (active = true);
+
+-- Example sources
+insert into rss_sources (name, feed_url, site_url, category) values
+  ('The Standard',             'https://www.standardmedia.co.ke/rss/headlines.php',      'https://www.standardmedia.co.ke',    'news'),
+  ('The Standard Politics',    'https://www.standardmedia.co.ke/rss/politics.php',       'https://www.standardmedia.co.ke',    'politics'),
+  ('The Standard World',       'https://www.standardmedia.co.ke/rss/world.php',          'https://www.standardmedia.co.ke',    'world'),
+  ('The Standard Business',    'https://www.standardmedia.co.ke/rss/business.php',       'https://www.standardmedia.co.ke',    'business'),
+  ('The Standard Sports',      'https://www.standardmedia.co.ke/rss/sports.php',         'https://www.standardmedia.co.ke',    'sports'),
+  ('The Standard Columnists',  'https://www.standardmedia.co.ke/rss/columnists.php',     'https://www.standardmedia.co.ke',    'opinion'),
+  ('BBC News',                  'https://feeds.bbci.co.uk/news/rss.xml',                  'https://www.bbc.co.uk/news',         'world'),
+  ('Al Jazeera',                'https://www.aljazeera.com/xml/rss/all.xml',               'https://www.aljazeera.com',         'world')
+on conflict (feed_url) do nothing;

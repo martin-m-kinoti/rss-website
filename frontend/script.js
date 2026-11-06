@@ -101,6 +101,10 @@ window.onload = async function() {
 
   // Fetch articles from the backend, then render
   await loadArticles();
+
+  // Partner wire feed (ingested headlines)
+  await loadWireSources();
+  refreshWire();
 };
 
 // --- RENDER LOGIC ---
@@ -288,11 +292,216 @@ function renderMostRead() {
   `).join('');
 }
 
+// --- WIRE FEED (articles ingested from partner news sites) ---
+// Kept out of ARTICLES on purpose: wire items have no body content and their ids
+// come from a different table, so they link out instead of opening the modal.
+const WIRE_PAGE_SIZE = 8;
+
+const WIRE = {
+  items: [],
+  sources: [],
+  state: "loading", // loading | ready | error
+  page: 1,
+  total: 0,
+  sourceId: 0 // 0 = all sources
+};
+
+let wireRequestToken = 0;
+let wireSearchTimer = null;
+
+function escapeHtml(text) {
+  return String(text == null ? "" : text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function wireTimeAgo(iso) {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diff / 60000);
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} hr ago`;
+  const days = Math.round(hours / 24);
+  return days === 1 ? "Yesterday" : `${days} days ago`;
+}
+
+function wireQueryString(page) {
+  const params = new URLSearchParams({ limit: WIRE_PAGE_SIZE, page });
+  if (WIRE.sourceId) params.set("source", WIRE.sourceId);
+  if (currentCategory !== "Home") params.set("category", currentCategory);
+  if (searchQuery) params.set("q", searchQuery);
+  return params.toString();
+}
+
+async function loadWireSources() {
+  try {
+    const res = await fetch("/api/rss/sources");
+    WIRE.sources = res.ok ? await res.json() : [];
+  } catch {
+    WIRE.sources = [];
+  }
+  renderWireSources();
+}
+
+async function loadWirePage() {
+  const token = ++wireRequestToken;
+  WIRE.state = "loading";
+  renderWireFeed();
+
+  try {
+    const res = await fetch(`/api/rss?${wireQueryString(WIRE.page)}`);
+    if (!res.ok) throw new Error(`Wire API responded with status ${res.status}`);
+    const data = await res.json();
+    if (token !== wireRequestToken) return; // superseded by a newer request
+
+    WIRE.items = WIRE.page === 1 ? data.articles : WIRE.items.concat(data.articles);
+    WIRE.total = data.total;
+    WIRE.state = "ready";
+  } catch (err) {
+    if (token !== wireRequestToken) return;
+    console.error("Failed to load wire articles:", err);
+    WIRE.state = "error";
+  }
+  renderWireFeed();
+}
+
+function refreshWire() {
+  WIRE.page = 1;
+  return loadWirePage();
+}
+
+function loadMoreWire() {
+  WIRE.page++;
+  return loadWirePage();
+}
+
+function scheduleWireRefresh() {
+  clearTimeout(wireSearchTimer);
+  wireSearchTimer = setTimeout(refreshWire, 350);
+}
+
+function filterWireSource(sourceId) {
+  WIRE.sourceId = sourceId;
+  renderWireSources();
+  refreshWire();
+}
+
+function renderWireSources() {
+  const container = document.getElementById("wire-sources");
+  if (!container) return;
+
+  const chips = [
+    { id: 0, name: "All Sources" },
+    ...WIRE.sources.map(s => ({ id: s.id, name: s.name }))
+  ];
+
+  container.innerHTML = chips.map(chip => {
+    const isActive = chip.id === WIRE.sourceId;
+    const activeClasses = isActive
+      ? "bg-slate-900 text-white font-bold"
+      : "text-slate-600 hover:bg-slate-100 border border-gray-200";
+    return `
+      <button onclick="filterWireSource(${chip.id})" class="px-3 py-1 rounded-full text-[11px] transition ${activeClasses}">
+        ${escapeHtml(chip.name)}
+      </button>
+    `;
+  }).join("");
+}
+
+function renderWireFeed() {
+  const feed = document.getElementById("wire-feed");
+  const more = document.getElementById("wire-more");
+  if (!feed) return;
+
+  if (WIRE.state === "loading" && WIRE.items.length === 0) {
+    feed.innerHTML = `
+      <div class="sm:col-span-2 text-center py-8 text-gray-400 text-xs">
+        <i class="fas fa-circle-notch fa-spin text-2xl mb-2 block"></i>
+        Pulling in partner headlines...
+      </div>
+    `;
+    more.innerHTML = "";
+    return;
+  }
+
+  if (WIRE.state === "error") {
+    feed.innerHTML = `
+      <div class="sm:col-span-2 text-center py-8">
+        <i class="fas fa-triangle-exclamation text-2xl text-red-500 mb-2 block"></i>
+        <p class="text-xs text-gray-500">The wire feed is unavailable right now.</p>
+        <button onclick="refreshWire()" class="mt-3 bg-slate-900 text-white text-xs px-4 py-2 rounded-lg hover:bg-slate-700 transition">
+          Retry
+        </button>
+      </div>
+    `;
+    more.innerHTML = "";
+    return;
+  }
+
+  if (WIRE.items.length === 0) {
+    feed.innerHTML = `
+      <div class="sm:col-span-2 text-center py-8 text-gray-400 text-xs">
+        <i class="fas fa-satellite-dish text-2xl mb-2 block"></i>
+        No partner headlines match this filter yet.
+      </div>
+    `;
+    more.innerHTML = "";
+    return;
+  }
+
+  feed.innerHTML = WIRE.items.map(art => {
+    const image = art.image_url || FALLBACK_IMAGE;
+    return `
+      <article class="border border-gray-200 rounded-lg p-3 hover:shadow-md transition flex gap-3">
+        <img src="${escapeHtml(image)}" alt="" loading="lazy"
+          onerror="this.onerror=null; this.src='${FALLBACK_IMAGE}'"
+          class="w-24 h-20 object-cover rounded-md shrink-0">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-[10px] font-extrabold text-red-600 uppercase tracking-wider bg-red-50 px-2 py-0.5 rounded">
+              ${escapeHtml(art.category)}
+            </span>
+            <span class="text-[10px] text-gray-400 truncate">${escapeHtml(wireTimeAgo(art.published_at))}</span>
+          </div>
+          <h3 class="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+            <a href="${escapeHtml(art.url)}" target="_blank" rel="noopener noreferrer" class="hover:text-red-600 transition">
+              ${escapeHtml(art.title)}
+            </a>
+          </h3>
+          <p class="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">${escapeHtml(art.summary || "")}</p>
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
+            <span class="text-[10px] font-semibold text-slate-600 truncate">
+              <i class="fas fa-broadcast-tower mr-1 text-gray-400"></i>${escapeHtml(art.source_name)}
+            </span>
+            <a href="${escapeHtml(art.url)}" target="_blank" rel="noopener noreferrer"
+              class="text-[10px] font-bold text-red-600 hover:text-red-800 shrink-0 ml-2">
+              Read at ${escapeHtml(art.source_name)} <i class="fas fa-external-link-alt ml-0.5"></i>
+            </a>
+          </div>
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  const remaining = WIRE.total - WIRE.items.length;
+  more.innerHTML = remaining > 0
+    ? `<button onclick="loadMoreWire()" class="bg-white border border-gray-300 text-slate-700 hover:bg-gray-50 text-xs font-bold px-4 py-2 rounded-lg transition">
+         Load ${Math.min(remaining, WIRE_PAGE_SIZE)} more of ${WIRE.total} wire story(ies)
+       </button>`
+    : `<p class="text-[11px] text-gray-400">All ${WIRE.total} wire story(ies) shown. Headlines link to the publishing source.</p>`;
+}
+
 // --- INTERACTION & EVENT HANDLERS ---
 function filterByCategory(cat) {
   currentCategory = cat;
   renderCategoryNav();
   renderApp();
+  refreshWire();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -307,6 +516,7 @@ function handleSearch() {
     clearBtn.classList.add('hidden');
   }
   renderApp();
+  scheduleWireRefresh();
 }
 
 function clearSearch() {
@@ -314,6 +524,7 @@ function clearSearch() {
   document.getElementById('clear-search').classList.add('hidden');
   searchQuery = '';
   renderApp();
+  refreshWire();
 }
 
 function resetFilters() {

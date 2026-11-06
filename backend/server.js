@@ -6,6 +6,7 @@ import jwt from "jsonwebtoken";
 import path from "path";
 import { fileURLToPath } from "url";
 import { supabaseAdmin } from "./supabase.js";
+import { rssRouter, rssAdminRouter, startRssJob, startCleanupJob } from "./rss-ingest.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -264,6 +265,14 @@ app.delete("/api/articles/:id", requireAdmin, async (req, res) => {
   res.json({ ok: true, id });
 });
 
+// ---------- Wire (RSS) endpoints ----------
+
+// Public: aggregated partner headlines + the active feed list for the homepage chips.
+app.use("/api/rss", rssRouter);
+
+// Admin: manage feeds and trigger fetches from the dashboard.
+app.use("/api/admin/rss", requireAdmin, rssAdminRouter);
+
 // ---------- Static frontend ----------
 
 app.use(express.static(path.join(__dirname, "..", "frontend")));
@@ -279,4 +288,6 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Marial-LouNews server running on http://localhost:${PORT}`);
+  startRssJob();
+  startCleanupJob();
 });
