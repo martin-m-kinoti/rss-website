@@ -99,6 +99,9 @@ window.onload = async function() {
   renderApp();
   updateSavedCount();
 
+  // Restore reader session (if any)
+  loadCurrentUser();
+
   // Fetch articles from the backend, then render
   await loadArticles();
 
@@ -675,4 +678,165 @@ function handleNewsletter(e) {
 function toggleMobileSearch() {
   const searchBox = document.getElementById('search-container');
   searchBox.classList.toggle('hidden');
+}
+
+// --- READER AUTH (LOGIN / SIGNUP) ---
+let currentUser = null;
+
+function openAuthModal(tab = 'login') {
+  const modal = document.getElementById('auth-modal');
+  if (!modal) return;
+  switchAuthTab(tab);
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  document.body.style.overflow = 'hidden';
+  const focusId = tab === 'signup' ? 'auth-signup-name' : 'auth-login-email';
+  setTimeout(() => document.getElementById(focusId)?.focus(), 50);
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  document.body.style.overflow = '';
+}
+
+function switchAuthTab(tab) {
+  const isLogin = tab !== 'signup';
+  document.getElementById('auth-login-form').classList.toggle('hidden', !isLogin);
+  document.getElementById('auth-signup-form').classList.toggle('hidden', isLogin);
+
+  const loginTab = document.getElementById('auth-tab-login');
+  const signupTab = document.getElementById('auth-tab-signup');
+  loginTab.className = isLogin
+    ? 'flex-1 pb-2.5 text-sm font-bold border-b-2 border-red-600 text-red-600 transition'
+    : 'flex-1 pb-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-slate-900 transition';
+  signupTab.className = isLogin
+    ? 'flex-1 pb-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-slate-900 transition'
+    : 'flex-1 pb-2.5 text-sm font-bold border-b-2 border-red-600 text-red-600 transition';
+
+  document.getElementById('auth-modal-title').textContent = isLogin ? 'Welcome back' : 'Create your account';
+  document.getElementById('auth-modal-subtitle').textContent = isLogin
+    ? 'Sign in to your reader account.'
+    : 'Join Marial-LouNews in less than a minute.';
+
+  document.getElementById('auth-login-error').classList.add('hidden');
+  document.getElementById('auth-signup-error').classList.add('hidden');
+}
+
+function showAuthError(id, message) {
+  const el = document.getElementById(id);
+  el.textContent = message;
+  el.classList.remove('hidden');
+}
+
+function updateAuthUI() {
+  const buttons = document.getElementById('auth-buttons');
+  const account = document.getElementById('auth-user');
+  if (!buttons || !account) return;
+
+  if (currentUser) {
+    document.getElementById('auth-user-name').textContent = currentUser.name || currentUser.email;
+    buttons.classList.add('hidden');
+    buttons.classList.remove('flex');
+    account.classList.remove('hidden');
+    account.classList.add('flex');
+  } else {
+    buttons.classList.remove('hidden');
+    buttons.classList.add('flex');
+    account.classList.add('hidden');
+    account.classList.remove('flex');
+  }
+}
+
+async function loadCurrentUser() {
+  try {
+    const res = await fetch('/api/user/me');
+    if (!res.ok) throw new Error('Not signed in');
+    const data = await res.json();
+    currentUser = data.user || null;
+  } catch {
+    currentUser = null;
+  }
+  updateAuthUI();
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('auth-login-email').value.trim();
+  const password = document.getElementById('auth-login-password').value;
+  const btn = document.getElementById('auth-login-btn');
+  const errorEl = document.getElementById('auth-login-error');
+  errorEl.classList.add('hidden');
+
+  btn.disabled = true;
+  btn.classList.add('opacity-60', 'cursor-not-allowed');
+  try {
+    const res = await fetch('/api/user/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Sign in failed. Please try again.');
+
+    currentUser = data.user;
+    updateAuthUI();
+    closeAuthModal();
+    e.target.reset();
+  } catch (err) {
+    showAuthError('auth-login-error', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('opacity-60', 'cursor-not-allowed');
+  }
+}
+
+async function handleSignup(e) {
+  e.preventDefault();
+  const name = document.getElementById('auth-signup-name').value.trim();
+  const email = document.getElementById('auth-signup-email').value.trim();
+  const password = document.getElementById('auth-signup-password').value;
+  const confirm = document.getElementById('auth-signup-confirm').value;
+  const btn = document.getElementById('auth-signup-btn');
+  const errorEl = document.getElementById('auth-signup-error');
+  errorEl.classList.add('hidden');
+
+  if (password !== confirm) {
+    showAuthError('auth-signup-error', 'Passwords do not match.');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.classList.add('opacity-60', 'cursor-not-allowed');
+  try {
+    const res = await fetch('/api/user/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Could not create your account.');
+
+    currentUser = data.user;
+    updateAuthUI();
+    closeAuthModal();
+    e.target.reset();
+  } catch (err) {
+    showAuthError('auth-signup-error', err.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('opacity-60', 'cursor-not-allowed');
+  }
+}
+
+async function logoutUser() {
+  try {
+    await fetch('/api/user/logout', { method: 'POST' });
+  } catch {
+    // Ignore network errors; the local UI is cleared below.
+  }
+  currentUser = null;
+  updateAuthUI();
 }

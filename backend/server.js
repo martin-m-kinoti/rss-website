@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { supabaseAdmin } from "./supabase.js";
 import { rssRouter, rssAdminRouter, startRssJob, startCleanupJob } from "./rss-ingest.js";
+import { userAuthRouter } from "./user-auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -206,6 +207,10 @@ app.post("/api/auth/logout", (req, res) => {
   res.clearCookie(SESSION_COOKIE, { path: "/" });
   res.json({ ok: true });
 });
+
+// ---------- Reader auth (login / signup) ----------
+
+app.use("/api/user", userAuthRouter);
 
 // ---------- Admin endpoints ----------
 

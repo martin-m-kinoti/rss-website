@@ -35,6 +35,16 @@
           <i class="fas fa-bookmark text-red-500"></i>
           <span>Saved (<span id="saved-count">0</span>)</span>
         </button>
+        <!-- Reader account -->
+        <div id="auth-buttons" class="flex items-center space-x-2 border-l border-slate-700 pl-4">
+          <button onclick="openAuthModal('login')" class="hover:text-white transition font-semibold">Sign In</button>
+          <button onclick="openAuthModal('signup')" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-3 py-1 rounded transition">Sign Up</button>
+        </div>
+        <div id="auth-user" class="hidden items-center space-x-2 border-l border-slate-700 pl-4">
+          <i class="fas fa-user-circle text-red-500"></i>
+          <span id="auth-user-name" class="text-slate-200 font-semibold max-w-[120px] truncate"></span>
+          <button onclick="logoutUser()" class="hover:text-white transition font-semibold">Log out</button>
+        </div>
       </div>
     </div>
   </div>
@@ -384,6 +394,79 @@
       <div id="saved-articles-list" class="space-y-3">
         <!-- Dynamic saved articles -->
       </div>
+    </div>
+  </div>
+
+  <!-- READER AUTH MODAL (LOGIN / SIGNUP) -->
+  <div id="auth-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if (event.target === this) closeAuthModal()">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-gray-100 p-6 sm:p-8">
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <div class="bg-red-600 text-white font-extrabold text-xl px-2.5 py-1 rounded inline-block mb-2">MLN</div>
+          <h3 id="auth-modal-title" class="text-xl font-extrabold text-slate-900">Welcome back</h3>
+          <p id="auth-modal-subtitle" class="text-xs text-gray-500 mt-1">Sign in to your reader account.</p>
+        </div>
+        <button onclick="closeAuthModal()" class="text-gray-400 hover:text-slate-900 text-xl p-1 transition" aria-label="Close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b border-gray-200 mb-6">
+        <button id="auth-tab-login" onclick="switchAuthTab('login')" class="flex-1 pb-2.5 text-sm font-bold border-b-2 border-red-600 text-red-600 transition">Sign In</button>
+        <button id="auth-tab-signup" onclick="switchAuthTab('signup')" class="flex-1 pb-2.5 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-slate-900 transition">Create Account</button>
+      </div>
+
+      <!-- Login form -->
+      <form id="auth-login-form" onsubmit="handleLogin(event)" class="space-y-4">
+        <div>
+          <label for="auth-login-email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email address</label>
+          <input type="email" id="auth-login-email" required autocomplete="username" placeholder="you@example.com"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+        </div>
+        <div>
+          <label for="auth-login-password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Password</label>
+          <input type="password" id="auth-login-password" required autocomplete="current-password" placeholder="Your password"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+        </div>
+        <p id="auth-login-error" class="hidden text-xs text-red-600 font-semibold"></p>
+        <button type="submit" id="auth-login-btn"
+          class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-2.5 rounded-lg transition">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Signup form -->
+      <form id="auth-signup-form" onsubmit="handleSignup(event)" class="space-y-4 hidden">
+        <div>
+          <label for="auth-signup-name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Full name</label>
+          <input type="text" id="auth-signup-name" required minlength="2" autocomplete="name" placeholder="Your name"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+        </div>
+        <div>
+          <label for="auth-signup-email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email address</label>
+          <input type="email" id="auth-signup-email" required autocomplete="username" placeholder="you@example.com"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+        </div>
+        <div>
+          <label for="auth-signup-password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Password</label>
+          <input type="password" id="auth-signup-password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+        </div>
+        <div>
+          <label for="auth-signup-confirm" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Confirm password</label>
+          <input type="password" id="auth-signup-confirm" required minlength="8" autocomplete="new-password" placeholder="Repeat your password"
+            class="w-full px-3.5 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent">
+        </div>
+        <p id="auth-signup-error" class="hidden text-xs text-red-600 font-semibold"></p>
+        <button type="submit" id="auth-signup-btn"
+          class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-2.5 rounded-lg transition">
+          Create Account
+        </button>
+        <p class="text-[11px] text-gray-400 text-center leading-relaxed">
+          By creating an account you agree to our Terms of Service and Privacy Policy.
+        </p>
+      </form>
     </div>
   </div>
 
