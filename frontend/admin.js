@@ -65,6 +65,13 @@ async function fetchMe() {
     const res = await fetch("/api/auth/me");
     if (!res.ok) return null;
     const data = await res.json();
+
+    if (data.role !== "admin") {
+      if (data.role === "user") {
+        showLogin("That session belongs to a reader account. Editor sign-in uses the same form.");
+      }
+      return null;
+    }
     return data.admin;
   } catch {
     return null;
@@ -138,7 +145,7 @@ function showLogin(message) {
 
 function enterDashboard(admin) {
   currentAdmin = admin;
-  document.getElementById("admin-identity-name").textContent = admin.name || admin.email;
+  document.getElementById("admin-identity-name").textContent = `${admin.name || admin.email} · Editor`;
   document.getElementById("admin-identity").classList.remove("hidden");
   document.getElementById("admin-identity").classList.add("flex");
   document.getElementById("login-view").classList.add("hidden");

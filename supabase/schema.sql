@@ -59,6 +59,23 @@ alter table public.admins enable row level security;
 
 
 
+-- Reader accounts. Sign-up writes here. Sign-in checks admins first, then this
+-- table, so one login form serves both roles and the session token carries the
+-- role. Same RLS treatment as admins: no policies, service key only.
+create table if not exists public.users (
+  id bigint generated always as identity primary key,
+  email text not null,
+  password_hash text not null,
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+create unique index if not exists users_email_lower_idx
+  on public.users (lower(email));
+
+alter table public.users enable row level security;
+
+
 -- RSS schema section
 create table if not exists rss_sources (
   id              bigint generated always as identity primary key,

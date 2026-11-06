@@ -99,8 +99,9 @@ window.onload = async function() {
   renderApp();
   updateSavedCount();
 
-  // Restore reader session (if any)
-  loadCurrentUser();
+  // Restore session (editor or reader) and apply navigation controls
+  await loadCurrentUser();
+  checkAccessNotice();
 
   // Fetch articles from the backend, then render
   await loadArticles();
@@ -680,8 +681,10 @@ function toggleMobileSearch() {
   searchBox.classList.toggle('hidden');
 }
 
-// --- READER AUTH (LOGIN / SIGNUP) ---
-let currentUser = null;
+// --- ACCOUNT SESSION & NAVIGATION CONTROL ---
+// One session covers both roles: /api/auth/login resolves whether the
+// credentials belong to an editor or a reader and returns the role.
+let currentAccount = null; // { id, name, email, role } | null
 
 function openAuthModal(tab = 'login') {
   const modal = document.getElementById('auth-modal');
@@ -731,13 +734,71 @@ function showAuthError(id, message) {
   el.classList.remove('hidden');
 }
 
+function toggleAccountMenu() {
+  document.getElementById('auth-account-menu')?.classList.toggle('hidden');
+}
+
+function closeAccountMenu() {
+  document.getElementById('auth-account-menu')?.classList.add('hidden');
+}
+
+document.addEventListener('click', (event) => {
+  const account = document.getElementById('auth-user');
+  if (account && !account.contains(event.target)) closeAccountMenu();
+});
+
+function showNavNotice(message) {
+  const notice = document.getElementById('nav-notice');
+  if (!notice) return;
+  document.getElementById('nav-notice-text').textContent = message;
+  notice.classList.remove('hidden');
+  notice.classList.add('flex');
+}
+
+function clearNavNotice() {
+  const notice = document.getElementById('nav-notice');
+  if (!notice) return;
+  notice.classList.add('hidden');
+  notice.classList.remove('flex');
+}
+
+// /admin bounces reader sessions back to the site with this flag.
+function checkAccessNotice() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('access') !== 'editors-only') return;
+
+  showNavNotice(
+    'The newsroom console is for editors. You are signed in with a reader account, which keeps its normal access to the site.'
+  );
+  params.delete('access');
+  const query = params.toString();
+  window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+}
+
 function updateAuthUI() {
   const buttons = document.getElementById('auth-buttons');
   const account = document.getElementById('auth-user');
   if (!buttons || !account) return;
 
-  if (currentUser) {
-    document.getElementById('auth-user-name').textContent = currentUser.name || currentUser.email;
+  closeAccountMenu();
+
+  if (currentAccount) {
+    const isAdmin = currentAccount.role === 'admin';
+    document.getElementById('auth-user-name').textContent = currentAccount.name || currentAccount.email;
+
+    const badge = document.getElementById('auth-role-badge');
+    badge.textContent = isAdmin ? 'Editor' : 'Reader';
+    badge.className = `text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+      isAdmin ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-200'
+    }`;
+
+    document.getElementById('auth-menu-name').textContent = currentAccount.name || 'Reader account';
+    document.getElementById('auth-menu-email').textContent = currentAccount.email;
+
+    const consoleLink = document.getElementById('nav-admin-console');
+    consoleLink.classList.toggle('hidden', !isAdmin);
+    consoleLink.classList.toggle('flex', isAdmin);
+
     buttons.classList.add('hidden');
     buttons.classList.remove('flex');
     account.classList.remove('hidden');
@@ -750,16 +811,22 @@ function updateAuthUI() {
   }
 }
 
+function applySession(data) {
+  const profile = data?.role === 'admin' ? data.admin : data?.user;
+  currentAccount = profile ? { ...profile, role: data.role } : null;
+  updateAuthUI();
+  return currentAccount;
+}
+
 async function loadCurrentUser() {
   try {
-    const res = await fetch('/api/user/me');
+    const res = await fetch('/api/auth/me');
     if (!res.ok) throw new Error('Not signed in');
-    const data = await res.json();
-    currentUser = data.user || null;
+    applySession(await res.json());
   } catch {
-    currentUser = null;
+    currentAccount = null;
+    updateAuthUI();
   }
-  updateAuthUI();
 }
 
 async function handleLogin(e) {
@@ -773,7 +840,7 @@ async function handleLogin(e) {
   btn.disabled = true;
   btn.classList.add('opacity-60', 'cursor-not-allowed');
   try {
-    const res = await fetch('/api/user/login', {
+    const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
@@ -781,10 +848,13 @@ async function handleLogin(e) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Sign in failed. Please try again.');
 
-    currentUser = data.user;
-    updateAuthUI();
+    const account = applySession(data);
     closeAuthModal();
     e.target.reset();
+    if (account?.role === 'admin') {
+      clearNavNotice();
+      showNavNotice('Signed in as an editor. Open the Admin Console from your account menu to publish.');
+    }
   } catch (err) {
     showAuthError('auth-login-error', err.message);
   } finally {
@@ -811,7 +881,7 @@ async function handleSignup(e) {
   btn.disabled = true;
   btn.classList.add('opacity-60', 'cursor-not-allowed');
   try {
-    const res = await fetch('/api/user/signup', {
+    const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password })
@@ -819,8 +889,7 @@ async function handleSignup(e) {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || 'Could not create your account.');
 
-    currentUser = data.user;
-    updateAuthUI();
+    applySession(data);
     closeAuthModal();
     e.target.reset();
   } catch (err) {
@@ -833,10 +902,11 @@ async function handleSignup(e) {
 
 async function logoutUser() {
   try {
-    await fetch('/api/user/logout', { method: 'POST' });
+    await fetch('/api/auth/logout', { method: 'POST' });
   } catch {
-    // Ignore network errors; the local UI is cleared below.
+    // The session cookie is cleared server-side; the local UI resets either way.
   }
-  currentUser = null;
+  currentAccount = null;
+  clearNavNotice();
   updateAuthUI();
 }
