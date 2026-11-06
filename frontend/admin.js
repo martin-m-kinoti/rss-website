@@ -143,7 +143,6 @@ function enterDashboard(admin) {
   loadArticlesList();
 }
 
-// --- API HELPER ---
 async function api(path, { method = "GET", body } = {}) {
   const res = await fetch(path, {
     method,
@@ -242,7 +241,7 @@ async function submitArticle(event) {
   const payload = {
     title: document.getElementById("f-title").value.trim(),
     category: document.getElementById("f-category").value,
-    author: document.getElementById("f-author").value.trim() || "MLN Desk",
+    author: String(await fetchMe().then(admin => admin.name)),
     summary: document.getElementById("f-summary").value.trim(),
     image_url: document.getElementById("f-image").value.trim() || null,
     content: document.getElementById("f-content").value,
@@ -278,7 +277,6 @@ function editArticle(id) {
   editingArticleId = id;
   document.getElementById("f-title").value = art.title || "";
   document.getElementById("f-category").value = art.category || "News";
-  document.getElementById("f-author").value = art.author || "";
   document.getElementById("f-summary").value = art.summary || "";
   document.getElementById("f-image").value = art.image_url || "";
   document.getElementById("f-image").dispatchEvent(new Event("input"));
