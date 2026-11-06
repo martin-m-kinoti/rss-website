@@ -13,6 +13,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     cat => `<option value="${cat}">${cat}</option>`
   ).join("");
 
+  document.getElementById("w-category").innerHTML = ADMIN_CATEGORIES.map(
+    cat => `<option value="${cat}">${cat}</option>`
+  ).join("");
+
   document.getElementById("f-image").addEventListener("input", updateImagePreview);
 
   // Restore an existing session (cookie-based), if any
@@ -141,6 +145,7 @@ function enterDashboard(admin) {
   document.getElementById("dashboard-view").classList.remove("hidden");
   document.getElementById("logout-btn").classList.remove("hidden");
   loadArticlesList();
+  loadWireList();
 }
 
 async function api(path, { method = "GET", body } = {}) {
@@ -330,6 +335,187 @@ function showFormMsg(message, isError) {
   }`;
 }
 
+// --- WIRE SOURCES (RSS INGEST FROM PARTNER SITES) ---
+let wireSourcesCache = [];
+
+async function loadWireList() {
+  const container = document.getElementById("wire-list");
+  container.innerHTML = `
+    <div class="text-center py-10 text-gray-400 text-sm">
+      <i class="fas fa-circle-notch fa-spin text-2xl mb-2 block"></i>
+      Loading feeds...
+    </div>
+  `;
+  try {
+    wireSourcesCache = await api("/api/admin/rss/sources");
+    renderWireList();
+  } catch (err) {
+    container.innerHTML = `
+      <div class="text-center py-10">
+        <i class="fas fa-triangle-exclamation text-2xl text-red-500 mb-2 block"></i>
+        <p class="text-sm text-gray-600 font-semibold">${escapeHtml(err.message)}</p>
+        <button onclick="loadWireList()" class="mt-3 bg-red-600 text-white text-xs px-4 py-2 rounded-lg hover:bg-red-700 transition">Retry</button>
+      </div>
+    `;
+  }
+}
+
+function renderWireList() {
+  const container = document.getElementById("wire-list");
+  document.getElementById("wire-status").textContent =
+    `${wireSourcesCache.length} feed(s)`;
+
+  if (wireSourcesCache.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-10 text-gray-400 text-sm">
+        <i class="fas fa-satellite-dish text-3xl mb-2 block"></i>
+        No partner feeds yet. Add one to start pulling headlines.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = wireSourcesCache.map(s => `
+    <div class="p-3 border ${s.active ? "border-gray-200" : "border-gray-200 bg-gray-50 opacity-70"} rounded-lg">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 mb-1 flex-wrap">
+            <h4 class="text-sm font-bold text-slate-900">${escapeHtml(s.name)}</h4>
+            <span class="text-[10px] font-extrabold text-red-600 uppercase tracking-wider bg-red-50 px-2 py-0.5 rounded">${escapeHtml(s.category)}</span>
+            ${s.active
+              ? '<span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">Active</span>'
+              : '<span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-200 px-2 py-0.5 rounded">Paused</span>'}
+          </div>
+          <p class="text-[11px] font-mono text-gray-500 truncate" title="${escapeHtml(s.feed_url)}">${escapeHtml(s.feed_url)}</p>
+          <p class="text-[11px] text-gray-500 mt-1">
+            <i class="far fa-file-alt mr-1"></i>${s.article_count} stored
+            <span class="mx-1">&bull;</span>
+            <i class="far fa-clock mr-1"></i>${formatDateTime(s.last_fetched_at)}
+          </p>
+          ${s.last_error ? `<p class="text-[11px] font-semibold text-red-600 mt-1"><i class="fas fa-exclamation-circle mr-1"></i>${escapeHtml(s.last_error)}</p>` : ""}
+        </div>
+        <div class="flex flex-col gap-1.5 shrink-0 w-28">
+          <button onclick="fetchWireSource(${s.id}, this)"
+            class="bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white text-[11px] font-bold py-1.5 px-2 rounded-lg transition">
+            <i class="fas fa-rotate mr-1"></i> Fetch
+          </button>
+          <button onclick="toggleWireSource(${s.id}, ${!s.active})"
+            class="bg-white border ${s.active ? "border-amber-300 text-amber-700 hover:bg-amber-50" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"} text-[11px] font-bold py-1.5 px-2 rounded-lg transition">
+            ${s.active ? "Pause" : "Resume"}
+          </button>
+          <button onclick="deleteWireSource(${s.id})"
+            class="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold py-1.5 px-2 rounded-lg transition">
+            <i class="fas fa-trash mr-1"></i> Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function submitWireSource(event) {
+  event.preventDefault();
+  const btn = document.getElementById("wire-submit-btn");
+  const payload = {
+    name: document.getElementById("w-name").value.trim(),
+    feed_url: document.getElementById("w-feed").value.trim(),
+    site_url: document.getElementById("w-site").value.trim(),
+    category: document.getElementById("w-category").value
+  };
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Adding & fetching...';
+
+  try {
+    const res = await api("/api/admin/rss/sources", { method: "POST", body: payload });
+    const fetched = res.fetch?.error
+      ? `Feed saved, but the first fetch failed: ${res.fetch.error}`
+      : `Feed saved and ${res.fetch?.items ?? 0} headline(s) pulled in.`;
+    showWireMsg(fetched, !!res.fetch?.error);
+    document.getElementById("wire-form").reset();
+    await loadWireList();
+  } catch (err) {
+    showWireMsg(err.message, true);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-plus mr-1"></i> Add & Fetch Feed';
+}
+
+async function fetchWireSource(id, btn) {
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Fetching';
+  }
+  try {
+    const result = await api(`/api/admin/rss/sources/${id}/ingest`, { method: "POST" });
+    showWireMsg(
+      result.error ? `${result.name}: fetch failed - ${result.error}` : `${result.name}: ${result.items} headline(s) processed.`,
+      !!result.error
+    );
+    await loadWireList();
+  } catch (err) {
+    showWireMsg(err.message, true);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-rotate mr-1"></i> Fetch';
+    }
+  }
+}
+
+async function toggleWireSource(id, active) {
+  try {
+    await api(`/api/admin/rss/sources/${id}`, { method: "PUT", body: { active } });
+    await loadWireList();
+  } catch (err) {
+    showWireMsg(err.message, true);
+  }
+}
+
+async function deleteWireSource(id) {
+  const source = wireSourcesCache.find(s => s.id === id);
+  const confirmed = confirm(
+    `Remove "${source ? source.name : `Feed #${id}`}"?\n\n` +
+    `This also deletes its ${source ? source.article_count : 0} stored headline(s). Headlines already written up as MLN articles are not affected.`
+  );
+  if (!confirmed) return;
+
+  try {
+    await api(`/api/admin/rss/sources/${id}`, { method: "DELETE" });
+    await loadWireList();
+  } catch (err) {
+    showWireMsg(err.message, true);
+  }
+}
+
+async function ingestAllWire() {
+  const btn = document.getElementById("wire-ingest-btn");
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Fetching...';
+
+  try {
+    const summary = await api("/api/admin/rss/ingest", { method: "POST" });
+    const failed = summary.failed ? `, ${summary.failed} failed` : "";
+    showWireMsg(`Fetched ${summary.items} headline(s) from ${summary.sources} feed(s)${failed}.`, !!summary.failed);
+    await loadWireList();
+  } catch (err) {
+    showWireMsg(err.message, true);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<i class="fas fa-rotate mr-1"></i> Fetch All Now';
+}
+
+function showWireMsg(message, isError) {
+  const el = document.getElementById("wire-form-msg");
+  el.textContent = message;
+  el.className = `text-xs font-semibold rounded-lg px-3 py-2 ${
+    isError
+      ? "bg-red-50 text-red-700 border border-red-200"
+      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+  }`;
+}
+
 // --- UTILS ---
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -341,5 +527,12 @@ function formatDate(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric"
+  });
+}
+
+function formatDateTime(iso) {
+  if (!iso) return "never";
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
   });
 }
