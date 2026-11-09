@@ -1,34 +1,26 @@
-// --- Marial-LouNews Admin Console ---
+// --- Marial-LouNews Newsroom (editors + administrators) ---
 
-const ADMIN_CATEGORIES = ["News", "Politics", "World", "Business", "Entertainment", "Sports", "Lifestyle", "Opinion"];
+const NEWSROOM_CATEGORIES = ["News", "Politics", "World", "Business", "Entertainment", "Sports", "Lifestyle", "Opinion"];
 
-let currentAdmin = null;
+let currentAccount = null;
 let articlesCache = [];
 let editingArticleId = null;
+let imagePreviewTimer = null;
 
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", async () => {
-  const select = document.getElementById("f-category");
-  select.innerHTML = ADMIN_CATEGORIES.map(
-    cat => `<option value="${cat}">${cat}</option>`
-  ).join("");
-
-  document.getElementById("w-category").innerHTML = ADMIN_CATEGORIES.map(
+  document.getElementById("f-category").innerHTML = NEWSROOM_CATEGORIES.map(
     cat => `<option value="${cat}">${cat}</option>`
   ).join("");
 
   document.getElementById("f-image").addEventListener("input", updateImagePreview);
 
-  // Restore an existing session (cookie-based), if any
-  const admin = await fetchMe();
-  if (admin) {
-    enterDashboard(admin);
-  } else {
-    showLogin();
-  }
-});
+  checkConsoleNotice();
 
-let imagePreviewTimer = null;
+  const session = await fetchMe();
+  if (session) enterConsole(session);
+  else showLogin();
+});
 
 function updateImagePreview() {
   const input = document.getElementById("f-image");
@@ -66,13 +58,11 @@ async function fetchMe() {
     if (!res.ok) return null;
     const data = await res.json();
 
-    if (data.role !== "admin") {
-      if (data.role === "user") {
-        showLogin("That session belongs to a reader account. Editor sign-in uses the same form.");
-      }
+    if (data.role === "user") {
+      window.location.href = "/?access=staff-only";
       return null;
     }
-    return data.admin;
+    return data;
   } catch {
     return null;
   }
@@ -99,7 +89,11 @@ async function login(event) {
 
     if (res.ok) {
       document.getElementById("login-password").value = "";
-      enterDashboard(data.admin);
+      if (data.role === "user") {
+        window.location.href = "/?access=staff-only";
+        return;
+      }
+      enterConsole(data);
     } else {
       errorEl.textContent = data.error || "Sign in failed. Please try again.";
       errorEl.classList.remove("hidden");
@@ -119,8 +113,8 @@ async function logout() {
   } catch {
     // Server unreachable; the cookie will expire on its own
   }
-  currentAdmin = null;
-  showLogin();
+  currentAccount = null;
+  window.location.href = "/editor";
 }
 
 function togglePasswordVisibility() {
@@ -135,6 +129,7 @@ function showLogin(message) {
   document.getElementById("dashboard-view").classList.add("hidden");
   document.getElementById("logout-btn").classList.add("hidden");
   document.getElementById("admin-identity").classList.add("hidden");
+  document.getElementById("administrator-link").classList.add("hidden");
   document.getElementById("login-view").classList.remove("hidden");
   if (message) {
     const errorEl = document.getElementById("login-error");
@@ -143,16 +138,47 @@ function showLogin(message) {
   }
 }
 
-function enterDashboard(admin) {
-  currentAdmin = admin;
-  document.getElementById("admin-identity-name").textContent = `${admin.name || admin.email} · Editor`;
+function enterConsole({ role, account }) {
+  currentAccount = { ...account, role };
+  const label = role === "administrator" ? "Administrator" : "Editor";
+
+  document.getElementById("admin-identity-name").textContent = `${account.name || account.email} · ${label}`;
+  document.getElementById("console-badge").textContent = label;
+  document.getElementById("list-heading").textContent =
+    role === "administrator" ? "All Articles" : "My Articles";
+  document.getElementById("administrator-link").classList.toggle("hidden", role !== "administrator");
+
   document.getElementById("admin-identity").classList.remove("hidden");
   document.getElementById("admin-identity").classList.add("flex");
   document.getElementById("login-view").classList.add("hidden");
   document.getElementById("dashboard-view").classList.remove("hidden");
   document.getElementById("logout-btn").classList.remove("hidden");
   loadArticlesList();
-  loadWireList();
+}
+
+function showConsoleNotice(message) {
+  document.getElementById("console-notice-text").textContent = message;
+  const notice = document.getElementById("console-notice");
+  notice.classList.remove("hidden");
+  notice.classList.add("flex");
+}
+
+function clearConsoleNotice() {
+  const notice = document.getElementById("console-notice");
+  notice.classList.add("hidden");
+  notice.classList.remove("flex");
+}
+
+function checkConsoleNotice() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("access") !== "administrators-only") return;
+
+  showConsoleNotice(
+    "User management and partner feeds are restricted to administrators. You can keep writing and editing your own stories here."
+  );
+  params.delete("access");
+  const query = params.toString();
+  window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
 }
 
 async function api(path, { method = "GET", body } = {}) {
@@ -184,8 +210,9 @@ async function loadArticlesList() {
     </div>
   `;
   try {
-    articlesCache = await api("/api/articles");
+    articlesCache = await api("/api/staff/articles");
     renderArticlesList();
+    openLinkedArticle();
   } catch (err) {
     container.innerHTML = `
       <div class="text-center py-10">
@@ -197,10 +224,24 @@ async function loadArticlesList() {
   }
 }
 
+function openLinkedArticle() {
+  const params = new URLSearchParams(window.location.search);
+  const id = Number(params.get("edit"));
+  if (!Number.isInteger(id) || id <= 0) return;
+
+  params.delete("edit");
+  const query = params.toString();
+  window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  if (articlesCache.some(art => art.id === id)) editArticle(id);
+}
+
 function renderArticlesList() {
   const container = document.getElementById("articles-list");
+  const canDelete = currentAccount?.role === "administrator";
+  const unpublished = articlesCache.filter(art => art.published === false).length;
+
   document.getElementById("list-count").textContent =
-    `${articlesCache.length} article(s)`;
+    `${articlesCache.length} article(s)${unpublished ? ` · ${unpublished} unpublished` : ""}`;
 
   if (articlesCache.length === 0) {
     container.innerHTML = `
@@ -213,12 +254,15 @@ function renderArticlesList() {
   }
 
   container.innerHTML = articlesCache.map(art => `
-    <div class="flex flex-col sm:flex-row gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition">
+    <div class="flex flex-col sm:flex-row gap-3 p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition ${art.published === false ? "bg-gray-50" : ""}">
       <img src="${art.image_url || ""}" alt="" onerror="this.style.display='none'"
         class="w-full sm:w-28 h-24 sm:h-auto object-cover rounded-md shrink-0 bg-gray-100">
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
           <span class="text-[10px] font-extrabold text-red-600 uppercase tracking-wider bg-red-50 px-2 py-0.5 rounded">${escapeHtml(art.category)}</span>
+          ${art.published === false
+            ? '<span class="text-[10px] font-bold text-amber-700 uppercase tracking-wider bg-amber-100 px-2 py-0.5 rounded"><i class="fas fa-eye-slash mr-0.5"></i> Unpublished</span>'
+            : '<span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded"><i class="fas fa-globe mr-0.5"></i> Live</span>'}
           ${art.lead ? '<span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider bg-amber-50 px-2 py-0.5 rounded"><i class="fas fa-star mr-0.5"></i> Lead</span>' : ""}
           ${art.featured ? '<span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">Featured</span>' : ""}
         </div>
@@ -231,34 +275,41 @@ function renderArticlesList() {
           ID #${art.id}
         </p>
       </div>
-      <div class="flex sm:flex-col gap-2 shrink-0 sm:w-24">
+      <div class="flex sm:flex-col gap-2 shrink-0 sm:w-28">
         <button onclick="editArticle(${art.id})"
           class="flex-1 bg-slate-900 hover:bg-slate-700 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg transition">
           <i class="fas fa-pen mr-1"></i> Edit
         </button>
+        <button onclick="togglePublish(${art.id}, ${art.published === false})"
+          class="flex-1 bg-white border ${art.published === false ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50" : "border-amber-300 text-amber-700 hover:bg-amber-50"} text-[11px] font-bold py-1.5 px-3 rounded-lg transition">
+          <i class="fas ${art.published === false ? "fa-globe" : "fa-eye-slash"} mr-1"></i> ${art.published === false ? "Publish" : "Unpublish"}
+        </button>
+        ${canDelete ? `
         <button onclick="deleteArticle(${art.id})"
           class="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold py-1.5 px-3 rounded-lg transition">
           <i class="fas fa-trash mr-1"></i> Delete
-        </button>
+        </button>` : ""}
       </div>
     </div>
   `).join("");
 }
 
-// --- CREATE / EDIT / DELETE ---
+// --- CREATE / EDIT / PUBLISH / DELETE ---
 async function submitArticle(event) {
   event.preventDefault();
   const btn = document.getElementById("submit-btn");
+  const published = document.getElementById("f-published").checked;
 
   const payload = {
     title: document.getElementById("f-title").value.trim(),
     category: document.getElementById("f-category").value,
-    author: String(await fetchMe().then(admin => admin.name)),
+    author: currentAccount.name || currentAccount.email,
     summary: document.getElementById("f-summary").value.trim(),
     image_url: document.getElementById("f-image").value.trim() || null,
     content: document.getElementById("f-content").value,
     lead: document.getElementById("f-lead").checked,
-    featured: document.getElementById("f-featured").checked
+    featured: document.getElementById("f-featured").checked,
+    published
   };
 
   btn.disabled = true;
@@ -270,7 +321,12 @@ async function submitArticle(event) {
       showFormMsg(`Article #${editingArticleId} updated successfully.`, false);
     } else {
       const created = await api("/api/articles", { method: "POST", body: payload });
-      showFormMsg(`"${created.title}" published to the homepage.`, false);
+      showFormMsg(
+        published
+          ? `"${created.title}" is live on the homepage.`
+          : `"${created.title}" saved as unpublished. Publish it from the list when it is ready.`,
+        false
+      );
     }
     resetForm();
     await loadArticlesList();
@@ -279,7 +335,7 @@ async function submitArticle(event) {
   }
 
   btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Publish Article';
+  btn.innerHTML = '<i class="fas fa-paper-plane mr-1"></i> Save Article';
 }
 
 function editArticle(id) {
@@ -295,6 +351,7 @@ function editArticle(id) {
   document.getElementById("f-content").value = art.content || "";
   document.getElementById("f-lead").checked = !!art.lead;
   document.getElementById("f-featured").checked = !!art.featured;
+  document.getElementById("f-published").checked = art.published !== false;
 
   document.getElementById("form-title").querySelector("span").textContent =
     `Edit Article #${id}`;
@@ -303,10 +360,29 @@ function editArticle(id) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+async function togglePublish(id, published) {
+  const art = articlesCache.find(a => a.id === id);
+  if (!published && art) {
+    const confirmed = confirm(
+      `Unpublish "${art.title}"?\n\nIt disappears from the site but stays in this list, so you can publish it again later.`
+    );
+    if (!confirmed) return;
+  }
+
+  try {
+    await api(`/api/articles/${id}`, { method: "PUT", body: { published } });
+    if (editingArticleId === id) document.getElementById("f-published").checked = published;
+    await loadArticlesList();
+  } catch (err) {
+    showFormMsg(err.message, true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+}
+
 async function deleteArticle(id) {
   const art = articlesCache.find(a => a.id === id);
   const confirmed = confirm(
-    `Delete "${art ? art.title : `Article #${id}`}"?\n\nThis permanently removes it from the homepage.`
+    `Delete "${art ? art.title : `Article #${id}`}"?\n\nThis permanently removes it. Unpublish instead if the story may come back.`
   );
   if (!confirmed) return;
 
@@ -342,187 +418,6 @@ function showFormMsg(message, isError) {
   }`;
 }
 
-// --- WIRE SOURCES (RSS INGEST FROM PARTNER SITES) ---
-let wireSourcesCache = [];
-
-async function loadWireList() {
-  const container = document.getElementById("wire-list");
-  container.innerHTML = `
-    <div class="text-center py-10 text-gray-400 text-sm">
-      <i class="fas fa-circle-notch fa-spin text-2xl mb-2 block"></i>
-      Loading feeds...
-    </div>
-  `;
-  try {
-    wireSourcesCache = await api("/api/admin/rss/sources");
-    renderWireList();
-  } catch (err) {
-    container.innerHTML = `
-      <div class="text-center py-10">
-        <i class="fas fa-triangle-exclamation text-2xl text-red-500 mb-2 block"></i>
-        <p class="text-sm text-gray-600 font-semibold">${escapeHtml(err.message)}</p>
-        <button onclick="loadWireList()" class="mt-3 bg-red-600 text-white text-xs px-4 py-2 rounded-lg hover:bg-red-700 transition">Retry</button>
-      </div>
-    `;
-  }
-}
-
-function renderWireList() {
-  const container = document.getElementById("wire-list");
-  document.getElementById("wire-status").textContent =
-    `${wireSourcesCache.length} feed(s)`;
-
-  if (wireSourcesCache.length === 0) {
-    container.innerHTML = `
-      <div class="text-center py-10 text-gray-400 text-sm">
-        <i class="fas fa-satellite-dish text-3xl mb-2 block"></i>
-        No partner feeds yet. Add one to start pulling headlines.
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = wireSourcesCache.map(s => `
-    <div class="p-3 border ${s.active ? "border-gray-200" : "border-gray-200 bg-gray-50 opacity-70"} rounded-lg">
-      <div class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 mb-1 flex-wrap">
-            <h4 class="text-sm font-bold text-slate-900">${escapeHtml(s.name)}</h4>
-            <span class="text-[10px] font-extrabold text-red-600 uppercase tracking-wider bg-red-50 px-2 py-0.5 rounded">${escapeHtml(s.category)}</span>
-            ${s.active
-              ? '<span class="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded">Active</span>'
-              : '<span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider bg-gray-200 px-2 py-0.5 rounded">Paused</span>'}
-          </div>
-          <p class="text-[11px] font-mono text-gray-500 truncate" title="${escapeHtml(s.feed_url)}">${escapeHtml(s.feed_url)}</p>
-          <p class="text-[11px] text-gray-500 mt-1">
-            <i class="far fa-file-alt mr-1"></i>${s.article_count} stored
-            <span class="mx-1">&bull;</span>
-            <i class="far fa-clock mr-1"></i>${formatDateTime(s.last_fetched_at)}
-          </p>
-          ${s.last_error ? `<p class="text-[11px] font-semibold text-red-600 mt-1"><i class="fas fa-exclamation-circle mr-1"></i>${escapeHtml(s.last_error)}</p>` : ""}
-        </div>
-        <div class="flex flex-col gap-1.5 shrink-0 w-28">
-          <button onclick="fetchWireSource(${s.id}, this)"
-            class="bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white text-[11px] font-bold py-1.5 px-2 rounded-lg transition">
-            <i class="fas fa-rotate mr-1"></i> Fetch
-          </button>
-          <button onclick="toggleWireSource(${s.id}, ${!s.active})"
-            class="bg-white border ${s.active ? "border-amber-300 text-amber-700 hover:bg-amber-50" : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"} text-[11px] font-bold py-1.5 px-2 rounded-lg transition">
-            ${s.active ? "Pause" : "Resume"}
-          </button>
-          <button onclick="deleteWireSource(${s.id})"
-            class="bg-white border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold py-1.5 px-2 rounded-lg transition">
-            <i class="fas fa-trash mr-1"></i> Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  `).join("");
-}
-
-async function submitWireSource(event) {
-  event.preventDefault();
-  const btn = document.getElementById("wire-submit-btn");
-  const payload = {
-    name: document.getElementById("w-name").value.trim(),
-    feed_url: document.getElementById("w-feed").value.trim(),
-    site_url: document.getElementById("w-site").value.trim(),
-    category: document.getElementById("w-category").value
-  };
-
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Adding & fetching...';
-
-  try {
-    const res = await api("/api/admin/rss/sources", { method: "POST", body: payload });
-    const fetched = res.fetch?.error
-      ? `Feed saved, but the first fetch failed: ${res.fetch.error}`
-      : `Feed saved and ${res.fetch?.items ?? 0} headline(s) pulled in.`;
-    showWireMsg(fetched, !!res.fetch?.error);
-    document.getElementById("wire-form").reset();
-    await loadWireList();
-  } catch (err) {
-    showWireMsg(err.message, true);
-  }
-
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-plus mr-1"></i> Add & Fetch Feed';
-}
-
-async function fetchWireSource(id, btn) {
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Fetching';
-  }
-  try {
-    const result = await api(`/api/admin/rss/sources/${id}/ingest`, { method: "POST" });
-    showWireMsg(
-      result.error ? `${result.name}: fetch failed - ${result.error}` : `${result.name}: ${result.items} headline(s) processed.`,
-      !!result.error
-    );
-    await loadWireList();
-  } catch (err) {
-    showWireMsg(err.message, true);
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i class="fas fa-rotate mr-1"></i> Fetch';
-    }
-  }
-}
-
-async function toggleWireSource(id, active) {
-  try {
-    await api(`/api/admin/rss/sources/${id}`, { method: "PUT", body: { active } });
-    await loadWireList();
-  } catch (err) {
-    showWireMsg(err.message, true);
-  }
-}
-
-async function deleteWireSource(id) {
-  const source = wireSourcesCache.find(s => s.id === id);
-  const confirmed = confirm(
-    `Remove "${source ? source.name : `Feed #${id}`}"?\n\n` +
-    `This also deletes its ${source ? source.article_count : 0} stored headline(s). Headlines already written up as MLN articles are not affected.`
-  );
-  if (!confirmed) return;
-
-  try {
-    await api(`/api/admin/rss/sources/${id}`, { method: "DELETE" });
-    await loadWireList();
-  } catch (err) {
-    showWireMsg(err.message, true);
-  }
-}
-
-async function ingestAllWire() {
-  const btn = document.getElementById("wire-ingest-btn");
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-1"></i> Fetching...';
-
-  try {
-    const summary = await api("/api/admin/rss/ingest", { method: "POST" });
-    const failed = summary.failed ? `, ${summary.failed} failed` : "";
-    showWireMsg(`Fetched ${summary.items} headline(s) from ${summary.sources} feed(s)${failed}.`, !!summary.failed);
-    await loadWireList();
-  } catch (err) {
-    showWireMsg(err.message, true);
-  }
-
-  btn.disabled = false;
-  btn.innerHTML = '<i class="fas fa-rotate mr-1"></i> Fetch All Now';
-}
-
-function showWireMsg(message, isError) {
-  const el = document.getElementById("wire-form-msg");
-  el.textContent = message;
-  el.className = `text-xs font-semibold rounded-lg px-3 py-2 ${
-    isError
-      ? "bg-red-50 text-red-700 border border-red-200"
-      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-  }`;
-}
-
 // --- UTILS ---
 function escapeHtml(text) {
   const div = document.createElement("div");
@@ -534,12 +429,5 @@ function formatDate(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short", day: "numeric", year: "numeric"
-  });
-}
-
-function formatDateTime(iso) {
-  if (!iso) return "never";
-  return new Date(iso).toLocaleString("en-US", {
-    month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
   });
 }

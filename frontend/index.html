@@ -53,8 +53,11 @@
               <p id="auth-menu-name" class="text-xs font-bold text-slate-900 truncate"></p>
               <p id="auth-menu-email" class="text-[10px] text-gray-500 truncate mt-0.5"></p>
             </div>
-            <a id="nav-admin-console" href="/admin" class="hidden items-center space-x-2 px-3 py-2 text-xs font-semibold hover:bg-slate-50 transition">
-              <i class="fas fa-user-shield text-emerald-600 w-4"></i><span>Editor Console</span>
+            <a id="nav-newsroom" href="/editor" class="hidden items-center space-x-2 px-3 py-2 text-xs font-semibold hover:bg-slate-50 transition">
+              <i class="fas fa-pen-nib text-emerald-600 w-4"></i><span>Newsroom</span>
+            </a>
+            <a id="nav-administrator" href="/administrator" class="hidden items-center space-x-2 px-3 py-2 text-xs font-semibold hover:bg-slate-50 transition">
+              <i class="fas fa-user-shield text-red-600 w-4"></i><span>Administrator Console</span>
             </a>
             <button onclick="toggleSavedArticlesModal(); closeAccountMenu()"
               class="w-full flex items-center space-x-2 px-3 py-2 text-xs font-semibold hover:bg-slate-50 transition text-left">
@@ -433,7 +436,7 @@
         <div>
           <div class="bg-red-600 text-white font-extrabold text-xl px-2.5 py-1 rounded inline-block mb-2">MLN</div>
           <h3 id="auth-modal-title" class="text-xl font-extrabold text-slate-900">Welcome back</h3>
-          <p id="auth-modal-subtitle" class="text-xs text-gray-500 mt-1">Sign in to your reader account.</p>
+          <p id="auth-modal-subtitle" class="text-xs text-gray-500 mt-1">Sign in to your Marial-LouNews account.</p>
         </div>
         <button onclick="closeAuthModal()" class="text-gray-400 hover:text-slate-900 text-xl p-1 transition" aria-label="Close">
           <i class="fas fa-times"></i>

@@ -682,8 +682,8 @@ function toggleMobileSearch() {
 }
 
 // --- ACCOUNT SESSION & NAVIGATION CONTROL ---
-// One session covers both roles: /api/auth/login resolves whether the
-// credentials belong to an editor or a reader and returns the role.
+// One session covers every role: /api/auth/login resolves whether the
+// credentials belong to a reader, an editor or an administrator.
 let currentAccount = null; // { id, name, email, role } | null
 
 function openAuthModal(tab = 'login') {
@@ -721,7 +721,7 @@ function switchAuthTab(tab) {
 
   document.getElementById('auth-modal-title').textContent = isLogin ? 'Welcome back' : 'Create your account';
   document.getElementById('auth-modal-subtitle').textContent = isLogin
-    ? 'Sign in to your reader account.'
+    ? 'Sign in to your Marial-LouNews account.'
     : 'Join Marial-LouNews in less than a minute.';
 
   document.getElementById('auth-login-error').classList.add('hidden');
@@ -762,13 +762,13 @@ function clearNavNotice() {
   notice.classList.remove('flex');
 }
 
-// /admin bounces reader sessions back to the site with this flag.
+// The console routes bounce reader sessions back to the site with this flag.
 function checkAccessNotice() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('access') !== 'editors-only') return;
+  if (params.get('access') !== 'staff-only') return;
 
   showNavNotice(
-    'The newsroom console is for editors. You are signed in with a reader account, which keeps its normal access to the site.'
+    'You are signed in with a reader account'
   );
   params.delete('access');
   const query = params.toString();
@@ -783,21 +783,30 @@ function updateAuthUI() {
   closeAccountMenu();
 
   if (currentAccount) {
-    const isAdmin = currentAccount.role === 'admin';
+    const role = currentAccount.role;
+    const isStaff = role === 'editor' || role === 'administrator';
     document.getElementById('auth-user-name').textContent = currentAccount.name || currentAccount.email;
 
     const badge = document.getElementById('auth-role-badge');
-    badge.textContent = isAdmin ? 'Editor' : 'Reader';
+    badge.textContent = role === 'administrator' ? 'Administrator' : role === 'editor' ? 'Editor' : 'Reader';
     badge.className = `text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-      isAdmin ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-200'
+      role === 'administrator'
+        ? 'bg-red-600 text-white'
+        : role === 'editor'
+          ? 'bg-emerald-500 text-white'
+          : 'bg-slate-700 text-slate-200'
     }`;
 
     document.getElementById('auth-menu-name').textContent = currentAccount.name || 'Reader account';
     document.getElementById('auth-menu-email').textContent = currentAccount.email;
 
-    const consoleLink = document.getElementById('nav-admin-console');
-    consoleLink.classList.toggle('hidden', !isAdmin);
-    consoleLink.classList.toggle('flex', isAdmin);
+    const newsroomLink = document.getElementById('nav-newsroom');
+    newsroomLink.classList.toggle('hidden', !isStaff);
+    newsroomLink.classList.toggle('flex', isStaff);
+
+    const administratorLink = document.getElementById('nav-administrator');
+    administratorLink.classList.toggle('hidden', role !== 'administrator');
+    administratorLink.classList.toggle('flex', role === 'administrator');
 
     buttons.classList.add('hidden');
     buttons.classList.remove('flex');
@@ -812,7 +821,7 @@ function updateAuthUI() {
 }
 
 function applySession(data) {
-  const profile = data?.role === 'admin' ? data.admin : data?.user;
+  const profile = data?.account;
   currentAccount = profile ? { ...profile, role: data.role } : null;
   updateAuthUI();
   return currentAccount;
@@ -851,9 +860,13 @@ async function handleLogin(e) {
     const account = applySession(data);
     closeAuthModal();
     e.target.reset();
-    if (account?.role === 'admin') {
+    if (account?.role === 'editor' || account?.role === 'administrator') {
       clearNavNotice();
-      showNavNotice('Signed in as an editor. Open the Admin Console from your account menu to publish.');
+      showNavNotice(
+        account.role === 'administrator'
+          ? 'Signed in as an administrator. The Newsroom writes and publishes stories; the Administrator Console manages accounts and partner feeds.'
+          : 'Signed in as an editor. Open the Newsroom from your account menu to write, edit and publish your stories.'
+      );
     }
   } catch (err) {
     showAuthError('auth-login-error', err.message);
