@@ -1,5 +1,5 @@
 # Marial-LouNews (MLN)
-![]()
+![marial-lou-news site homepage](https://github.com/martin-m-kinoti/rss-website/blob/main/graphics/homepage.png)
 
 Kenyan news portal: a static frontend served by an Express backend that stores
 articles in Supabase, with editor and administrator consoles and an automated wire feed (RSS ingest).
