@@ -237,7 +237,6 @@ function openLinkedArticle() {
 
 function renderArticlesList() {
   const container = document.getElementById("articles-list");
-  const canDelete = currentAccount?.role === "administrator";
   const unpublished = articlesCache.filter(art => art.published === false).length;
 
   document.getElementById("list-count").textContent =
@@ -284,7 +283,7 @@ function renderArticlesList() {
           class="flex-1 bg-white border ${art.published === false ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50" : "border-amber-300 text-amber-700 hover:bg-amber-50"} text-[11px] font-bold py-1.5 px-3 rounded-lg transition">
           <i class="fas ${art.published === false ? "fa-globe" : "fa-eye-slash"} mr-1"></i> ${art.published === false ? "Publish" : "Unpublish"}
         </button>
-        ${canDelete ? `
+        ${currentAccount?.role === "administrator" || art.created_by === currentAccount?.id ? `
         <button onclick="deleteArticle(${art.id})"
           class="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold py-1.5 px-3 rounded-lg transition">
           <i class="fas fa-trash mr-1"></i> Delete

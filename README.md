@@ -22,7 +22,7 @@ npm run dev
 | Role | Can do |
 | --- | --- |
 | `user` | Read the site, sign up and sign in |
-| `editor` | Everything a reader can, plus write articles and publish/unpublish their own |
+| `editor` | Everything a reader can, plus write, publish/unpublish and delete their own articles |
 | `administrator` | Full user management, wire feeds, and edit/delete of any article |
 
 Editors work at `/editor`, administrators at `/administrator`. Both sign in through the same
@@ -60,8 +60,7 @@ Public — `GET /api/articles`, `GET /api/articles/:id` (published only), `POST 
 `GET /api/rss?source=&category=&q=&page=&limit=`, `GET /api/rss/sources`.
 
 Staff (cookie session) — `GET /api/staff/articles` (own rows for editors), `POST /api/articles`,
-`PUT /api/articles/:id` (ownership enforced for editors), `DELETE /api/articles/:id`
-(administrator only).
+`PUT /api/articles/:id` and `DELETE /api/articles/:id` (ownership enforced for editors).
 
 Administrator — `/api/admin/users` (`GET/POST`, `PUT/DELETE /:id?role=<currentRole>`) and, under
 `/api/admin/rss`: `GET/POST /sources`, `PUT/DELETE /sources/:id`, `POST /sources/:id/ingest`,
