@@ -1,7 +1,8 @@
-// Usage (from the backend directory):
-//   npm run add-admin -- editor@marialounews.co.ke 'YourStrongPass123' "Editor Name"
+// Bootstraps the first administrator on a fresh database. Everyone else is
+// created from the Administrator Console at /administrator.
 //
-// Creates the admin if the email is new, or updates the password/name if it exists.
+// Usage (from the backend directory):
+//   npm run add-admin -- owner@marialounews.co.ke 'YourStrongPass123' "Owner Name"
 
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
@@ -12,7 +13,7 @@ dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
 const [emailArg, password, ...nameParts] = process.argv.slice(2);
 const email = (emailArg || "").trim().toLowerCase();
-const name = nameParts.join(" ").trim() || "Editor";
+const name = nameParts.join(" ").trim() || "Administrator";
 
 function fail(message) {
   console.error(`\nError: ${message}\n`);
@@ -64,7 +65,7 @@ if (existing) {
 } else {
   const { data: created, error } = await admin
     .from("admins")
-    .insert({ email, password_hash, name })
+    .insert({ email, password_hash, name, role: "administrator" })
     .select("id")
     .single();
   if (error) {
@@ -74,4 +75,4 @@ if (existing) {
   console.log(`\nCreated admin ${email} (id ${created.id}).\n`);
 }
 
-console.log("Sign in at http://localhost:3000/admin\n");
+console.log("Sign in at http://localhost:3000/administrator\n");

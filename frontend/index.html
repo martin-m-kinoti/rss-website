@@ -413,6 +413,76 @@
   </div>
 
   <!-- SAVED ARTICLES MODAL -->
+  <!-- WIRE READ MODAL (partner headline, read on MLN before leaving) -->
+  <div id="wire-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 hidden items-center justify-center p-3 md:p-6"
+    onclick="if (event.target === this) closeWireModal()">
+    <div class="wire-modal-card bg-white rounded-2xl max-w-3xl w-full max-h-[92vh] shadow-2xl relative border border-slate-800 flex flex-col overflow-hidden">
+
+      <div class="bg-brand-navy text-white px-4 md:px-6 py-3 flex items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="bg-red-600 text-white text-[10px] font-extrabold px-2.5 py-1 uppercase rounded tracking-wider shrink-0">
+            <i class="fas fa-broadcast-tower mr-1"></i> Wire
+          </span>
+          <span id="wire-modal-source" class="text-xs font-semibold text-slate-200 truncate"></span>
+          <span id="wire-modal-position" class="text-[10px] text-slate-400 font-medium shrink-0"></span>
+        </div>
+        <div class="flex items-center gap-1 shrink-0">
+          <button id="wire-modal-prev" onclick="stepWireModal(-1)" title="Previous headline" aria-label="Previous headline"
+            class="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition">
+            <i class="fas fa-chevron-left text-xs"></i>
+          </button>
+          <button id="wire-modal-next" onclick="stepWireModal(1)" title="Next headline" aria-label="Next headline"
+            class="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition">
+            <i class="fas fa-chevron-right text-xs"></i>
+          </button>
+          <button id="wire-modal-close" onclick="closeWireModal()" title="Close" aria-label="Close"
+            class="w-8 h-8 rounded-lg text-slate-300 hover:text-white hover:bg-red-600 transition ml-1">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="wire-modal-body" class="wire-modal-scroll overflow-y-auto">
+        <figure class="relative bg-brand-navy min-h-[224px] md:min-h-[320px]">
+          <img id="wire-modal-image" src="" alt="" class="w-full h-56 md:h-80 object-cover">
+          <div id="wire-modal-image-fallback" class="hidden w-full h-56 md:h-80 items-center justify-center flex-col gap-3 text-slate-500 wire-modal-fallback">
+            <i class="fas fa-satellite-dish text-4xl"></i>
+            <span class="text-[11px] uppercase tracking-[0.2em] font-semibold">No feed image</span>
+          </div>
+          <div class="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-slate-950/90 to-transparent pointer-events-none"></div>
+          <figcaption class="absolute inset-x-0 bottom-0 px-4 md:px-8 pb-3 flex items-center gap-2 flex-wrap">
+            <span id="wire-modal-category" class="bg-red-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider"></span>
+            <span id="wire-modal-ago" class="text-[11px] font-semibold text-slate-200"></span>
+          </figcaption>
+        </figure>
+
+        <div class="p-5 md:p-8 space-y-5">
+          <h1 id="wire-modal-title" class="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight"></h1>
+
+          <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 border-b border-gray-100 pb-4">
+            <span id="wire-modal-author" class="font-semibold text-slate-700"></span>
+            <span class="text-gray-300">&bull;</span>
+            <span id="wire-modal-date"></span>
+            <span class="text-gray-300">&bull;</span>
+            <span class="inline-flex items-center gap-1 text-slate-600 font-semibold">
+              <i class="fas fa-broadcast-tower text-red-500"></i><span id="wire-modal-outlet"></span>
+            </span>
+          </div>
+
+          <div>
+            <p class="text-[10px] font-extrabold uppercase tracking-[0.18em] text-red-600 mb-2">Feed excerpt</p>
+            <div id="wire-modal-summary" class="wire-summary text-slate-800"></div>
+          </div>
+
+          <div class="border-t border-gray-200 pt-6 text-center">
+            <p class="wire-attribution">Read more at <a id="wire-modal-source-link" href="#" target="_blank" rel="noopener noreferrer">original source</a>.</p>
+            <p id="wire-modal-credit" class="text-[11px] text-gray-400 mt-2 leading-relaxed"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="saved-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-xl w-full max-h-[80vh] overflow-y-auto shadow-2xl p-6">
       <div class="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">

@@ -298,7 +298,7 @@ function renderMostRead() {
 
 // --- WIRE FEED (articles ingested from partner news sites) ---
 // Kept out of ARTICLES on purpose: wire items have no body content and their ids
-// come from a different table, so they link out instead of opening the modal.
+// come from a different table, so they open the wire reader instead of the article modal.
 const WIRE_PAGE_SIZE = 8;
 
 const WIRE = {
@@ -461,7 +461,10 @@ function renderWireFeed() {
   feed.innerHTML = WIRE.items.map(art => {
     const image = art.image_url || FALLBACK_IMAGE;
     return `
-      <article class="border border-gray-200 rounded-lg p-3 hover:shadow-md transition flex gap-3">
+      <article data-wire-id="${art.id}" role="button" tabindex="0"
+        onclick="openWireModal(${art.id})"
+        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openWireModal(${art.id}); }"
+        class="border border-gray-200 rounded-lg p-3 hover:shadow-md hover:border-red-200 transition flex gap-3 cursor-pointer group focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2">
         <img src="${escapeHtml(image)}" alt="" loading="lazy"
           onerror="this.onerror=null; this.src='${FALLBACK_IMAGE}'"
           class="w-24 h-20 object-cover rounded-md shrink-0">
@@ -472,20 +475,17 @@ function renderWireFeed() {
             </span>
             <span class="text-[10px] text-gray-400 truncate">${escapeHtml(wireTimeAgo(art.published_at))}</span>
           </div>
-          <h3 class="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
-            <a href="${escapeHtml(art.url)}" target="_blank" rel="noopener noreferrer" class="hover:text-red-600 transition">
-              ${escapeHtml(art.title)}
-            </a>
+          <h3 class="text-sm font-bold text-slate-900 leading-snug line-clamp-2 group-hover:text-red-600 transition">
+            ${escapeHtml(art.title)}
           </h3>
           <p class="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">${escapeHtml(art.summary || "")}</p>
           <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
             <span class="text-[10px] font-semibold text-slate-600 truncate">
               <i class="fas fa-broadcast-tower mr-1 text-gray-400"></i>${escapeHtml(art.source_name)}
             </span>
-            <a href="${escapeHtml(art.url)}" target="_blank" rel="noopener noreferrer"
-              class="text-[10px] font-bold text-red-600 hover:text-red-800 shrink-0 ml-2">
-              Read at ${escapeHtml(art.source_name)} <i class="fas fa-external-link-alt ml-0.5"></i>
-            </a>
+            <span class="text-[10px] font-bold text-red-600 shrink-0 ml-2">
+              Read excerpt <i class="fas fa-arrow-right ml-0.5 transition-transform group-hover:translate-x-0.5"></i>
+            </span>
           </div>
         </div>
       </article>
@@ -497,8 +497,133 @@ function renderWireFeed() {
     ? `<button onclick="loadMoreWire()" class="bg-white border border-gray-300 text-slate-700 hover:bg-gray-50 text-xs font-bold px-4 py-2 rounded-lg transition">
          Load ${Math.min(remaining, WIRE_PAGE_SIZE)} more of ${WIRE.total} wire story(ies)
        </button>`
-    : `<p class="text-[11px] text-gray-400">All ${WIRE.total} wire story(ies) shown. Headlines link to the publishing source.</p>`;
+    : `<p class="text-[11px] text-gray-400">All ${WIRE.total} wire story(ies) shown. Open a headline to read its excerpt here.</p>`;
 }
+
+// --- WIRE READER (partner excerpt read on MLN before leaving the site) ---
+let wireModalIndex = -1;
+let wireModalReturnFocus = null;
+
+function openWireModal(id) {
+  const index = WIRE.items.findIndex(item => item.id === id);
+  if (index === -1) return;
+
+  wireModalIndex = index;
+  wireModalReturnFocus = document.activeElement;
+  renderWireModal();
+
+  const modal = document.getElementById("wire-modal");
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  document.body.style.overflow = "hidden";
+  document.getElementById("wire-modal-body").scrollTop = 0;
+  document.getElementById("wire-modal-close").focus({ preventScroll: true });
+}
+
+function closeWireModal() {
+  const modal = document.getElementById("wire-modal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+  document.body.style.overflow = "";
+  wireModalIndex = -1;
+
+  if (wireModalReturnFocus && wireModalReturnFocus.isConnected) {
+    wireModalReturnFocus.focus();
+  }
+  wireModalReturnFocus = null;
+}
+
+function stepWireModal(delta) {
+  const next = wireModalIndex + delta;
+  if (next < 0 || next >= WIRE.items.length) return;
+
+  wireModalIndex = next;
+  renderWireModal();
+  document.getElementById("wire-modal-body").scrollTop = 0;
+}
+
+function renderWireModal() {
+  const item = WIRE.items[wireModalIndex];
+  if (!item) return;
+
+  const outlet = item.source_name || "Partner feed";
+
+  document.getElementById("wire-modal-source").textContent = outlet;
+  document.getElementById("wire-modal-position").textContent =
+    `${wireModalIndex + 1} / ${WIRE.items.length}`;
+  document.getElementById("wire-modal-category").textContent = item.category || "News";
+  document.getElementById("wire-modal-ago").textContent = wireTimeAgo(item.published_at);
+  document.getElementById("wire-modal-title").textContent = item.title || "Untitled headline";
+  document.getElementById("wire-modal-author").textContent =
+    item.author ? `By ${item.author}` : "Wire desk";
+  document.getElementById("wire-modal-date").textContent = wireFullDate(item.published_at);
+  document.getElementById("wire-modal-outlet").textContent = outlet;
+
+  const image = document.getElementById("wire-modal-image");
+  const fallback = document.getElementById("wire-modal-image-fallback");
+  const showFallback = () => {
+    image.classList.add("hidden");
+    fallback.classList.remove("hidden");
+    fallback.classList.add("flex");
+  };
+
+  image.onerror = showFallback;
+  image.onload = () => {
+    image.classList.remove("hidden");
+    fallback.classList.add("hidden");
+    fallback.classList.remove("flex");
+  };
+
+  if (item.image_url) {
+    fallback.classList.add("hidden");
+    fallback.classList.remove("flex");
+    image.classList.add("hidden");
+    image.src = item.image_url;
+  } else {
+    image.removeAttribute("src");
+    showFallback();
+  }
+
+  const summary = (item.summary || "").trim();
+  document.getElementById("wire-modal-summary").innerHTML = summary
+    ? summary.split(/\n{2,}/).map(part => `<p>${escapeHtml(part)}</p>`).join("")
+    : '<p class="wire-summary-empty">This feed did not supply an excerpt. The full story is available at the original source below.</p>';
+
+  const link = document.getElementById("wire-modal-source-link");
+  const safeUrl = /^https?:\/\//i.test(item.url || "")
+    ? item.url
+    : /^https?:\/\//i.test(item.site_url || "")
+      ? item.site_url
+      : null;
+  if (safeUrl) link.href = safeUrl;
+  else link.removeAttribute("href");
+
+  document.getElementById("wire-modal-credit").textContent =
+    `Headline and excerpt supplied by ${outlet} via its RSS feed. MLN links to the publisher for the full story.`;
+
+  document.getElementById("wire-modal-prev").disabled = wireModalIndex <= 0;
+  document.getElementById("wire-modal-next").disabled =
+    wireModalIndex >= WIRE.items.length - 1;
+}
+
+function wireFullDate(iso) {
+  if (!iso) return "Date unavailable";
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return "Date unavailable";
+  const day = date.toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric"
+  });
+  const time = date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${day} · ${time}`;
+}
+
+document.addEventListener("keydown", (event) => {
+  if (wireModalIndex === -1) return;
+
+  if (event.key === "Escape") closeWireModal();
+  else if (event.key === "ArrowLeft") stepWireModal(-1);
+  else if (event.key === "ArrowRight") stepWireModal(1);
+});
 
 // --- INTERACTION & EVENT HANDLERS ---
 function filterByCategory(cat) {
