@@ -1,4 +1,5 @@
 # Marial-LouNews (MLN)
+![]()
 
 Kenyan news portal: a static frontend served by an Express backend that stores
 articles in Supabase, with editor and administrator consoles and an automated wire feed (RSS ingest).
