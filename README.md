@@ -29,10 +29,6 @@ npm run dev
 Editors work at `/editor`, administrators at `/administrator`. Both sign in through the same
 form as readers; the server resolves the role and the consoles guard themselves.
 
-Bootstrap the first administrator on a fresh database with
-`npm run add-admin -- <email> <password> "<name>"`. After that, create readers, editors and
-administrators from the Administrator Console (Accounts panel) — no script needed.
-
 ## Configuration
 
 `backend/.env` (git-ignored; never commit real values):
@@ -54,18 +50,6 @@ Run `supabase/schema.sql` in the Supabase SQL Editor. It creates `articles`, `ad
 `articles.created_by`, `articles.published`). Wire headlines are deduped per feed on
 `(source_id, guid)`.
 
-## API
-
-Public — `GET /api/articles`, `GET /api/articles/:id` (published only), `POST /api/auth/signup`,
-`POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`,
-`GET /api/rss?source=&category=&q=&page=&limit=`, `GET /api/rss/sources`.
-
-Staff (cookie session) — `GET /api/staff/articles` (own rows for editors), `POST /api/articles`,
-`PUT /api/articles/:id` and `DELETE /api/articles/:id` (ownership enforced for editors).
-
-Administrator — `/api/admin/users` (`GET/POST`, `PUT/DELETE /:id?role=<currentRole>`) and, under
-`/api/admin/rss`: `GET/POST /sources`, `PUT/DELETE /sources/:id`, `POST /sources/:id/ingest`,
-`POST /ingest`.
 
 ## Wire feed
 
